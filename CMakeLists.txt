@@ -11,36 +11,26 @@ set(srcs
     # Central
     streamer/central/streamer_central.c
     streamer/central/streamer_central_camera_controler.c
-    streamer/central/streamer_central_camera_receiver.c
-    streamer/central/streamer_central_camera_receiver_message_processor.c
-    streamer/central/streamer_central_remote_accessor_controler.c
-    streamer/central/streamer_central_remote_accessor_sender.c
+    streamer/central/streamer_central_receiver.c
+    streamer/central/streamer_central_receiver_message_processor.c
+    streamer/central/streamer_central_client_controler.c
+    streamer/central/streamer_central_sender.c
     # Client
     streamer/client/streamer_client.c
-    streamer/client/streamer_client_central_controler.c
-    streamer/client/streamer_client_central_receiver_message_processor.c
-    streamer/client/streamer_client_central_receiver.c
+    streamer/client/streamer_client_controler.c
+    streamer/client/streamer_client_receiver_message_processor.c
+    streamer/client/streamer_client_receiver.c
+    # Protocol
 )
 
 set(priv_include_dirs
-    # Common
     streamer/private_include
-    # Camera
-    streamer/private_include/camera
-    # Central
-    streamer/private_include/central
-    # Client
-    streamer/private_include/client
 )
 
 set(include_dirs
-    # Common
     streamer/include
-    # Camera
     streamer/include/camera
-    # Central
     streamer/include/central
-    # Client
     streamer/include/client
 )
 

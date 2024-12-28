@@ -20,7 +20,7 @@ typedef struct
     int frame_max_len;
     int fps;
     const char *host_ip;
-} streamer_config_t;
+} streamer_client_config_t;
 
 /**
  * @brief Initialize the UDP streamer handler application protocol
@@ -29,7 +29,7 @@ typedef struct
  *
  * @return ESP_OK on success
  */
-esp_err_t streamer_client_init(const streamer_config_t *config);
+esp_err_t streamer_client_init(const streamer_client_config_t *config);
 
 /**
  * @brief Deinitialize the UDP streamer hadler

@@ -33,9 +33,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "streamer_central.h"
-#include "streamer_central_camera_controler.h"
-#include "streamer_central_types.h"
+#include "central/streamer_central.h"
+#include "central/streamer_central_camera_controler.h"
+#include "central/streamer_central_types.h"
 
 static const char *TAG = "UDP_STREAMER_COMPONENT_CONTROLER";
 
@@ -176,12 +176,12 @@ static void process_control_connection(int sock)
     }
 }
 
-void streamer_central_camera_control_task(void *pvParameters)
+void streamer_central_camera_controler_task(void *pvParameters)
 {
     assert(s_state != NULL);
     assert(s_state->config != NULL);
 
-    streamer_config_t *config = s_state->config;
+    streamer_central_config_t *config = s_state->config;
 
     struct sockaddr_in control_addr;
     control_addr.sin_addr.s_addr = htonl(INADDR_ANY);

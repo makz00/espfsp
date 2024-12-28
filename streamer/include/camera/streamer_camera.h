@@ -33,7 +33,7 @@ typedef struct
     int frame_max_len;
     int fps;
     const char *server_mdns_name;
-} streamer_config_t;
+} streamer_camera_config_t;
 
 /**
  * @brief Initialize the UDP streamer handler camera side application protocol
@@ -42,7 +42,7 @@ typedef struct
  *
  * @return ESP_OK on success
  */
-esp_err_t streamer_camera_init(const streamer_config_t *config);
+esp_err_t streamer_camera_init(const streamer_camera_config_t *config);
 
 /**
  * @brief Deinitialize the UDP streamer handler camera

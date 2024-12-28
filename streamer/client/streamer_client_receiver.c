@@ -30,14 +30,14 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "streamer_central.h"
-#include "streamer_central_camera_receiver.h"
-#include "streamer_central_camera_receiver_message_processor.h"
-#include "streamer_central_types.h"
+#include "client/streamer_client.h"
+#include "client/streamer_client_receiver.h"
+#include "client/streamer_client_receiver_message_processor.h"
+#include "client/streamer_client_types.h"
 
 static const char *TAG = "UDP_STREAMER_COMPONENT_RECEIVER";
 
-extern streamer_central_state_t *s_state;
+extern streamer_client_state_t *s_state;
 
 static int receive_whole_message(int sock, char *rx_buffer, int rx_buffer_len)
 {
@@ -78,18 +78,24 @@ static int receive_whole_message(int sock, char *rx_buffer, int rx_buffer_len)
     return 1;
 }
 
-// static void punch_hole_in_nat(int sock)
-// {
-//     uint8_t bullet = 0;
-//     while (sendto(sock, &bullet, sizeof(bullet), 0, (struct sockaddr *)dest_addr, sizeof(*dest_addr)) > 0) {}
-// }
+static const char *BULLET_PAYLOAD = "BULLET";
 
-static void process_receiver_connection(int sock)
+static void punch_hole_in_nat(int sock, const struct sockaddr_in *dest_addr)
+{
+    for (int i = 0; i < 10; i++)
+    {
+        while (sendto(sock, BULLET_PAYLOAD, strlen(BULLET_PAYLOAD), 0, (struct sockaddr *)dest_addr, sizeof(*dest_addr)) <= 0) {}
+    }
+}
+
+static void process_receiver_connection(int sock, const struct sockaddr_in *dest_addr)
 {
     char rx_buffer[sizeof(streamer_message_t)];
 
     while (1)
     {
+        punch_hole_in_nat(sock, dest_addr);
+
         int ret = receive_whole_message(sock, rx_buffer, sizeof(streamer_message_t));
         if (ret > 0)
         {
@@ -101,7 +107,7 @@ static void process_receiver_connection(int sock)
             //     ((streamer_message_t *)rx_buffer)->timestamp.tv_sec,
             //     ((streamer_message_t *)rx_buffer)->timestamp.tv_usec);
 
-            process_message((streamer_message_t *)rx_buffer);
+            streamer_client_process_message((streamer_message_t *)rx_buffer);
         }
         else
         {
@@ -111,17 +117,22 @@ static void process_receiver_connection(int sock)
     }
 }
 
-void streamer_central_camera_data_receive_task(void *pvParameters)
+void streamer_client_receiver_task(void *pvParameters)
 {
     assert(s_state != NULL);
     assert(s_state->config != NULL);
 
-    streamer_config_t *config = s_state->config;
+    streamer_client_config_t *config = s_state->config;
 
     struct sockaddr_in receiver_addr;
     receiver_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     receiver_addr.sin_family = AF_INET;
-    receiver_addr.sin_port = htons(config->camera_local_ports.data_port);
+    receiver_addr.sin_port = htons(config->client_local_ports.data_port);
+
+    struct sockaddr_in dest_addr;
+    dest_addr.sin_addr.s_addr = inet_addr(config->host_ip);
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(config->client_remote_ports.data_port);
 
     while (1)
     {
@@ -144,9 +155,9 @@ void streamer_central_camera_data_receive_task(void *pvParameters)
             continue;
         }
 
-        ESP_LOGI(TAG, "Socket bound, port %d", config->camera_local_ports.data_port);
+        ESP_LOGI(TAG, "Socket bound, port %d", config->client_local_ports.data_port);
 
-        process_receiver_connection(sock);
+        process_receiver_connection(sock, &dest_addr);
 
         ESP_LOGE(TAG, "Shutting down socket and restarting...");
         shutdown(sock, 0);

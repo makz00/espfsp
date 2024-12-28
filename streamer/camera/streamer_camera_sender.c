@@ -29,10 +29,10 @@
 #include "freertos/task.h"
 
 #include "mdns_helper.h"
-#include "streamer_camera.h"
 #include "streamer_message_types.h"
-#include "streamer_camera_sender.h"
-#include "streamer_camera_types.h"
+#include "camera/streamer_camera.h"
+#include "camera/streamer_camera_sender.h"
+#include "camera/streamer_camera_types.h"
 
 static const char *TAG = "STREAMER_CAMERA_SENDER";
 
@@ -97,7 +97,7 @@ static esp_err_t send_whole_message(int sock, stream_fb_t *fb, struct sockaddr_i
 
 static void process_sender_connection(int sock, struct sockaddr_in *dest_addr)
 {
-    streamer_config_t * config = s_state->config;
+    streamer_camera_config_t * config = s_state->config;
     stream_fb_t fb;
 
     fb.buf = (char *) malloc(config->frame_max_len);
@@ -127,12 +127,12 @@ static void process_sender_connection(int sock, struct sockaddr_in *dest_addr)
     }
 }
 
-void streamer_camera_data_send_task(void *pvParameters)
+void streamer_camera_sender_task(void *pvParameters)
 {
     assert(s_state != NULL);
     assert(s_state->config != NULL);
 
-    streamer_config_t *config = s_state->config;
+    streamer_camera_config_t *config = s_state->config;
 
     struct sockaddr_in sender_addr;
     sender_addr.sin_addr.s_addr = htonl(INADDR_ANY);

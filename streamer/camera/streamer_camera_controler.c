@@ -29,9 +29,9 @@
 #include "freertos/task.h"
 
 #include "mdns_helper.h"
-#include "streamer_camera.h"
-#include "streamer_camera_controler.h"
-#include "streamer_camera_types.h"
+#include "camera/streamer_camera.h"
+#include "camera/streamer_camera_controler.h"
+#include "camera/streamer_camera_types.h"
 
 static const char *TAG = "STREAMER_CAMERA_CONRTOLER";
 
@@ -139,12 +139,12 @@ static void process_control_connection(int sock)
     }
 }
 
-void streamer_camera_control_task(void *pvParameters)
+void streamer_camera_controler_task(void *pvParameters)
 {
     assert(s_state != NULL);
     assert(s_state->config != NULL);
 
-    streamer_config_t * config = s_state->config;
+    streamer_camera_config_t * config = s_state->config;
 
     struct sockaddr_in control_addr;
     control_addr.sin_addr.s_addr = htonl(INADDR_ANY);

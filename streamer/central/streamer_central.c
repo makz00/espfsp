@@ -30,13 +30,13 @@
 
 #include "mdns.h"
 
-#include "streamer_central.h"
 #include "streamer_message_types.h"
-#include "streamer_central_camera_controler.h"
-#include "streamer_central_camera_receiver.h"
-#include "streamer_central_remote_accessor_controler.h"
-#include "streamer_central_remote_accessor_sender.h"
-#include "streamer_central_types.h"
+#include "central/streamer_central.h"
+#include "central/streamer_central_camera_controler.h"
+#include "central/streamer_central_receiver.h"
+#include "central/streamer_central_client_controler.h"
+#include "central/streamer_central_sender.h"
+#include "central/streamer_central_types.h"
 
 static const char *TAG = "UDP_STREAMER_COMPONENT";
 
@@ -107,7 +107,7 @@ esp_err_t udp_streamer_handler_buffers_init()
     return ESP_OK;
 }
 
-esp_err_t init_streamer_central_state(const streamer_config_t *config)
+esp_err_t init_streamer_central_state(const streamer_central_config_t *config)
 {
     s_state = (streamer_central_state_t *) malloc(sizeof(streamer_central_state_t));
     if (!s_state)
@@ -116,14 +116,14 @@ esp_err_t init_streamer_central_state(const streamer_config_t *config)
         return ESP_FAIL;
     }
 
-    s_state->config = (streamer_config_t *) malloc(sizeof(streamer_config_t));
+    s_state->config = (streamer_central_config_t *) malloc(sizeof(streamer_central_config_t));
     if (!s_state->config)
     {
         ESP_LOGE(TAG, "State allocation failed for configuration");
         return ESP_FAIL;
     }
 
-    memcpy(s_state->config, config, sizeof(streamer_config_t));
+    memcpy(s_state->config, config, sizeof(streamer_central_config_t));
 
     return ESP_OK;
 }
@@ -146,8 +146,8 @@ esp_err_t udp_streamer_handler_start_receiver()
     BaseType_t xStatus;
 
     xStatus = xTaskCreatePinnedToCore(
-        streamer_central_camera_data_receive_task,
-        "streamer_central_camera_data_receive_task",
+        streamer_central_receiver_task,
+        "streamer_central_receiver_task",
         s_state->config->data_receive_task_info.stack_size,
         NULL,
         s_state->config->data_receive_task_info.task_prio,
@@ -168,8 +168,8 @@ esp_err_t udp_streamer_handler_connect_camera()
     BaseType_t xStatus;
 
     xStatus = xTaskCreate(
-        streamer_central_camera_control_task,
-        "streamer_central_camera_control_task",
+        streamer_central_camera_controler_task,
+        "streamer_central_camera_controler_task",
         s_state->config->camera_control_task_info.stack_size,
         NULL,
         s_state->config->camera_control_task_info.task_prio,
@@ -189,8 +189,8 @@ esp_err_t udp_streamer_handler_start_sender()
     BaseType_t xStatus;
 
     xStatus = xTaskCreate(
-        streamer_central_remote_accessor_data_send_task,
-        "streamer_central_remote_accessor_data_send_task",
+        streamer_central_sender_task,
+        "streamer_central_sender_task",
         s_state->config->data_send_task_info.stack_size,
         NULL,
         s_state->config->data_send_task_info.task_prio,
@@ -210,8 +210,8 @@ esp_err_t udp_streamer_handler_connect_remote_accessor()
     BaseType_t xStatus;
 
     xStatus = xTaskCreate(
-        streamer_central_remote_accessor_control_task,
-        "streamer_central_remote_accessor_control_task",
+        streamer_central_client_controler_task,
+        "streamer_central_client_controler_task",
         s_state->config->client_control_task_info.stack_size,
         NULL,
         s_state->config->client_control_task_info.task_prio,
@@ -239,7 +239,7 @@ esp_err_t start_mdns()
     return ESP_OK;
 }
 
-esp_err_t streamer_central_init(const streamer_config_t *config)
+esp_err_t streamer_central_init(const streamer_central_config_t *config)
 {
     esp_err_t ret;
 

@@ -7,4 +7,4 @@
 
 #include "streamer_message_types.h"
 
-void process_client_message(const streamer_message_t *message);
+void streamer_client_process_message(const streamer_message_t *message);

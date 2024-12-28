@@ -28,10 +28,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "streamer_client.h"
-#include "streamer_client_central_controler.h"
-#include "streamer_client_central_receiver.h"
-#include "streamer_client_types.h"
+#include "client/streamer_client.h"
+#include "client/streamer_client_controler.h"
+#include "client/streamer_client_receiver.h"
+#include "client/streamer_client_types.h"
 
 static const char *TAG = "UDP_STREAMER_COMPONENT";
 
@@ -102,7 +102,7 @@ esp_err_t udp_streamer_handler_buffers_init()
     return ESP_OK;
 }
 
-esp_err_t init_streamer_client_state(const streamer_config_t *config)
+esp_err_t init_streamer_client_state(const streamer_client_config_t *config)
 {
     s_state = (streamer_client_state_t *) malloc(sizeof(streamer_client_state_t));
     if (!s_state)
@@ -111,14 +111,14 @@ esp_err_t init_streamer_client_state(const streamer_config_t *config)
         return ESP_FAIL;
     }
 
-    s_state->config = (streamer_config_t *) malloc(sizeof(streamer_config_t));
+    s_state->config = (streamer_client_config_t *) malloc(sizeof(streamer_client_config_t));
     if (!s_state->config)
     {
         ESP_LOGE(TAG, "State allocation failed for configuration");
         return ESP_FAIL;
     }
 
-    memcpy(s_state->config, config, sizeof(streamer_config_t));
+    memcpy(s_state->config, config, sizeof(streamer_client_config_t));
 
     return ESP_OK;
 }
@@ -141,8 +141,8 @@ esp_err_t udp_streamer_handler_start_receiver()
     BaseType_t xStatus;
 
     xStatus = xTaskCreatePinnedToCore(
-        streamer_client_central_data_receive_task,
-        "streamer_client_central_data_receive_task",
+        streamer_client_receiver_task,
+        "streamer_client_receiver_task",
         s_state->config->data_receive_task_info.stack_size,
         NULL,
         s_state->config->data_receive_task_info.task_prio,
@@ -163,8 +163,8 @@ esp_err_t udp_streamer_handler_connect_camera()
     BaseType_t xStatus;
 
     xStatus = xTaskCreate(
-        streamer_client_central_control_task,
-        "streamer_client_central_control_task",
+        streamer_client_controler_task,
+        "streamer_client_controler_task",
         s_state->config->central_control_task_info.stack_size,
         NULL,
         s_state->config->central_control_task_info.task_prio,
@@ -179,7 +179,7 @@ esp_err_t udp_streamer_handler_connect_camera()
     return ESP_OK;
 }
 
-esp_err_t streamer_client_init(const streamer_config_t *config)
+esp_err_t streamer_client_init(const streamer_client_config_t *config)
 {
     esp_err_t ret;
 

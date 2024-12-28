@@ -8,14 +8,14 @@
 #include "esp_err.h"
 #include "esp_log.h"
 
-#include "streamer_central_camera_receiver_message_processor.h"
-#include "streamer_central_types.h"
+#include "client/streamer_client_types.h"
+#include "client/streamer_client_receiver_message_processor.h"
 
 static const char *TAG = "UDP_STREAMER_COMPONENT_RECEIVER_MESSAGE_PROCESSOR";
 
-extern streamer_central_state_t *s_state;
+extern streamer_client_state_t *s_state;
 
-extern QueueHandle_t fbQueue;
+extern QueueHandle_t xQueue;
 
 static bool is_assembly_producer_owner(const streamer_message_assembly_t *assembly)
 {
@@ -77,13 +77,13 @@ static streamer_message_assembly_t *get_free_assembly()
     return NULL;
 }
 
-void process_message(const streamer_message_t *message)
+void streamer_client_process_message(const streamer_message_t *message)
 {
     streamer_message_assembly_t * ass = get_assembly_with_timestamp(&message->timestamp);
     if (ass == NULL)
     {
         ass = get_free_assembly();
-        if (ass == NULL && xQueueReceive(fbQueue, &ass, 0) != pdTRUE)
+        if (ass == NULL && xQueueReceive(xQueue, &ass, 0) != pdTRUE)
         {
             return;
         }
@@ -103,15 +103,7 @@ void process_message(const streamer_message_t *message)
 
     if (ass->msg_received == ass->msg_total)
     {
-        ESP_LOGI(TAG, "Put FB in queue");
-
         ass->bits = MSG_ASS_CONSUMER_OWNED_VAL | MSG_ASS_FREE_VAL;
-        if (xQueueSend(fbQueue, &ass, 0) != pdPASS)
-        {
-            ESP_LOGI(TAG, "Put FB in queue FAILED");
-        }
-
-        UBaseType_t elems = uxQueueMessagesWaiting(fbQueue);
-        ESP_LOGI(TAG, "There is %d elems in queue", elems);
+        xQueueSend(xQueue, &ass, 0);
     }
 }

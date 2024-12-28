@@ -5,4 +5,4 @@
 
 #pragma once
 
-void streamer_client_central_data_receive_task(void *pvParameters);
+void streamer_client_controler_task(void *pvParameters);

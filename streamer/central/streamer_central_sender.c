@@ -19,9 +19,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "streamer_central.h"
-#include "streamer_central_remote_accessor_sender.h"
-#include "streamer_central_types.h"
+#include "central/streamer_central.h"
+#include "central/streamer_central_sender.h"
+#include "central/streamer_central_types.h"
 
 static const char *TAG = "UDP_STREAMER_COMPONENT_CENTRAL_SENDER";
 
@@ -163,12 +163,12 @@ static void process_sender_connection(int sock)
     }
 }
 
-void streamer_central_remote_accessor_data_send_task(void *pvParameters)
+void streamer_central_sender_task(void *pvParameters)
 {
     assert(s_state != NULL);
     assert(s_state->config != NULL);
 
-    streamer_config_t *config = s_state->config;
+    streamer_central_config_t *config = s_state->config;
 
     struct sockaddr_in sender_addr;
     sender_addr.sin_addr.s_addr = htonl(INADDR_ANY);

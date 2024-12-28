@@ -26,10 +26,10 @@
 #include "mdns.h"
 
 #include "mdns_helper.h"
-#include "streamer_camera.h"
-#include "streamer_camera_controler.h"
-#include "streamer_camera_sender.h"
-#include "streamer_camera_types.h"
+#include "camera/streamer_camera.h"
+#include "camera/streamer_camera_controler.h"
+#include "camera/streamer_camera_sender.h"
+#include "camera/streamer_camera_types.h"
 
 static const char *TAG = "UDP_STREAMER_CAMERA_COMPONENT";
 
@@ -40,7 +40,7 @@ static esp_err_t check_config()
     return ESP_OK;
 }
 
-static esp_err_t init_streamer_camera_state(const streamer_config_t *config)
+static esp_err_t init_streamer_camera_state(const streamer_camera_config_t *config)
 {
     s_state = (streamer_camera_state_t *) malloc(sizeof(streamer_camera_state_t));
     if (!s_state)
@@ -49,14 +49,14 @@ static esp_err_t init_streamer_camera_state(const streamer_config_t *config)
         return ESP_FAIL;
     }
 
-    s_state->config = (streamer_config_t *) malloc(sizeof(streamer_config_t));
+    s_state->config = (streamer_camera_config_t *) malloc(sizeof(streamer_camera_config_t));
     if (!s_state->config)
     {
         ESP_LOGE(TAG, "Allocation of 's_state->config' failed");
         return ESP_FAIL;
     }
 
-    memcpy(s_state->config, config, sizeof(streamer_config_t));
+    memcpy(s_state->config, config, sizeof(streamer_camera_config_t));
 
     return ESP_OK;
 }
@@ -108,8 +108,8 @@ static esp_err_t init_camera()
 static esp_err_t streamer_camera_data_send_start()
 {
     BaseType_t xStatus = xTaskCreate(
-        streamer_camera_data_send_task,
-        "streamer_camera_data_send_task",
+        streamer_camera_sender_task,
+        "streamer_camera_sender_task",
         s_state->config->data_send_task_info.stack_size,
         NULL,
         s_state->config->data_send_task_info.task_prio,
@@ -127,8 +127,8 @@ static esp_err_t streamer_camera_data_send_start()
 static esp_err_t streamer_camera_control_start()
 {
     BaseType_t xStatus = xTaskCreate(
-        streamer_camera_control_task,
-        "streamer_camera_control_task",
+        streamer_camera_controler_task,
+        "streamer_camera_controler_task",
         s_state->config->control_task_info.stack_size,
         NULL,
         s_state->config->control_task_info.task_prio,
@@ -143,7 +143,7 @@ static esp_err_t streamer_camera_control_start()
     return ESP_OK;
 }
 
-esp_err_t streamer_camera_init(const streamer_config_t *config)
+esp_err_t streamer_camera_init(const streamer_camera_config_t *config)
 {
     esp_err_t ret;
 
