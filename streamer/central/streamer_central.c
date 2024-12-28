@@ -173,7 +173,7 @@ esp_err_t udp_streamer_handler_connect_camera()
         s_state->config->camera_control_task_info.stack_size,
         NULL,
         s_state->config->camera_control_task_info.task_prio,
-        &s_state->control_task_handle);
+        &s_state->camera_control_task_handle);
 
     if (xStatus != pdPASS)
     {
@@ -194,7 +194,7 @@ esp_err_t udp_streamer_handler_start_sender()
         s_state->config->data_send_task_info.stack_size,
         NULL,
         s_state->config->data_send_task_info.task_prio,
-        &s_state->receiver_task_handle);
+        &s_state->sender_task_handle);
 
     if (xStatus != pdPASS)
     {
@@ -215,7 +215,7 @@ esp_err_t udp_streamer_handler_connect_remote_accessor()
         s_state->config->client_control_task_info.stack_size,
         NULL,
         s_state->config->client_control_task_info.task_prio,
-        &s_state->control_task_handle);
+        &s_state->client_control_task_handle);
 
     if (xStatus != pdPASS)
     {

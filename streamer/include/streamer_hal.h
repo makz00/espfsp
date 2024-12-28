@@ -49,13 +49,6 @@ typedef enum
     STREAMER_FRAMESIZE_INVALID
 } streamer_framesize_t;
 
-typedef struct {
-    const uint16_t width;
-    const uint16_t height;
-} streamer_resolution_info_t;
-
-extern const streamer_resolution_info_t streamer_resolution[];
-
 typedef enum
 {
     STREAMER_GRAB_WHEN_EMPTY,
@@ -64,11 +57,16 @@ typedef enum
 
 typedef struct
 {
-    // Video parameters
     streamer_pixformat_t pixel_format;
     streamer_framesize_t frame_size;
-    int jpeg_quality;
-    // Camera parameters
     streamer_grab_mode_t grab_mode;
+    int jpeg_quality;
     int fb_count;
 } streamer_hal_config_t;
+
+typedef struct {
+    const uint16_t width;
+    const uint16_t height;
+} streamer_resolution_info_t;
+
+extern const streamer_resolution_info_t streamer_resolution[];
