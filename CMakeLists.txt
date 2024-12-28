@@ -52,6 +52,5 @@ idf_component_register(
     SRCS ${srcs}
     INCLUDE_DIRS ${include_dirs}
     PRIV_INCLUDE_DIRS ${priv_include_dirs}
-    # REQUIRES driver  # due to include of driver/gpio.h in esp_camera.h
     PRIV_REQUIRES ${priv_requires}
 )
