@@ -36,8 +36,8 @@ typedef struct
 
 typedef enum
 {
-    STREAMER_TRANSPORT_UDP,
-    STREAMER_TRANSPORT_TCP,
+    ESPFSP_TRANSPORT_UDP,
+    ESPFSP_TRANSPORT_TCP,
 } espfsp_transport_t;
 
 typedef esp_err_t (*__espfsp_start_cam)(const espfsp_cam_config_t *cam_config, const espfsp_frame_config_t *frame_config);
