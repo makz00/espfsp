@@ -14,7 +14,7 @@
 #include "freertos/task.h"
 
 #include "espfsp_client_push.h"
-#include "client_push/espfsp_client_push_state_def.h"
+#include "client_push/espfsp_state_def.h"
 #include "client_push/espfsp_data_task.h"
 #include "client_push/espfsp_session_and_control_task.h"
 
@@ -221,6 +221,12 @@ espfsp_client_push_handler_t espfsp_client_push_init(const espfsp_client_push_co
 
 void espfsp_client_push_deinit(espfsp_client_push_handler_t handler)
 {
+    if (state_ == NULL)
+    {
+        ESP_LOGE(TAG, "Client push state is not initialized");
+        return;
+    }
+
     esp_err_t err = remove_client_push((espfsp_client_push_instance_t *) handler);
     if (err != ESP_OK)
     {

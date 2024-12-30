@@ -35,7 +35,7 @@ void espfsp_client_play_deinit(espfsp_client_play_handler_t handler);
 
 espfsp_fb_t *espfsp_client_play_get_fb(espfsp_client_play_handler_t handler);
 
-void espfsp_client_play_return_fb(espfsp_client_play_handler_t handler, espfsp_fb_t *fb);
+esp_err_t espfsp_client_play_return_fb(espfsp_client_play_handler_t handler, espfsp_fb_t *fb);
 
 esp_err_t espfsp_client_play_reconfigure_frame(espfsp_client_play_handler_t handler, espfsp_frame_config_t *frame_config);
 

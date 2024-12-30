@@ -12,10 +12,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "espfsp_message_defs.h"
 #include "espfsp_client_push.h"
 #include "client_push/espfsp_session_and_control_task.h"
-#include "client_push/espfsp_client_push_state_def.h"
+#include "client_push/espfsp_state_def.h"
 
 static const char *TAG = "ESPFSP_CLIENT_PUSH_SESSION_AND_CONTROL_TASK";
 
@@ -124,10 +123,6 @@ static void process_control_connection(int sock)
 void espfsp_client_push_session_and_control_task(void *pvParameters)
 {
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) pvParameters;
-
-    assert(instance != NULL);
-    assert(instance->config != NULL);
-
     const espfsp_client_push_config_t *config = instance->config;
 
     struct sockaddr_in dest_addr;
@@ -158,4 +153,6 @@ void espfsp_client_push_session_and_control_task(void *pvParameters)
             break;
         }
     }
+
+    vTaskDelete(NULL);
 }

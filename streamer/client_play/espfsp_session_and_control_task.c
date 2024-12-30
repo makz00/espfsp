@@ -3,40 +3,20 @@
  * Author: Maksymilian Komarnicki
  */
 
-/*
- * ASSUMPTIONS BEG --------------------------------------------------------------------------------
- * - One format of pictures supported - HD compressed with JPEG
- * - Constant size for one Frame Buffer, so allocation can take place before messagas arrived
- * ASSUMPTIONS END --------------------------------------------------------------------------------
- *
- * TODO BEG ---------------------------------------------------------------------------------------
- * - Configuration options to add in 'menuconfig'/Kconfig file
- * TODO END ---------------------------------------------------------------------------------------
- */
-
 #include "esp_err.h"
 #include "esp_log.h"
 
-#include <arpa/inet.h>
 #include "esp_netif.h"
-#include <netdb.h>
 #include <sys/socket.h>
-
-#include "lwip/err.h"
-#include "lwip/sockets.h"
-#include "lwip/sys.h"
-#include <lwip/netdb.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "client/streamer_client.h"
-#include "client/streamer_client_controler.h"
-#include "client/streamer_client_types.h"
+#include "espfsp_client_play.h"
+#include "client_play/espfsp_session_and_control_task.h"
+#include "client_play/espfsp_state_def.h"
 
-static const char *TAG = "UDP_STREAMER_COMPONENT_CONTROLER";
-
-extern streamer_client_state_t *s_state;
+static const char *TAG = "ESPFSP_CLIENT_PLAY_SESSION_AND_CONTROL_TASK";
 
 static const char *PAYLOAD_HELLO = "HELLO";
 static const char *PAYLOAD_READY = "READY";
@@ -140,61 +120,41 @@ static void process_control_connection(int sock)
     }
 }
 
-void streamer_client_controler_task(void *pvParameters)
+void espfsp_client_play_session_and_control_task(void *pvParameters)
 {
-    assert(s_state != NULL);
-    assert(s_state->config != NULL);
+    espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) pvParameters;
+    const espfsp_client_play_config_t *config = instance->config;
 
-    streamer_client_config_t * config = s_state->config;
-
-    struct sockaddr_in control_addr;
-    control_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    control_addr.sin_family = AF_INET;
-    control_addr.sin_port = htons(config->client_local_ports.control_port);
+    struct esp_ip4_addr remote_addr;
+    remote_addr.addr = inet_addr(config->host_ip);
 
     struct sockaddr_in dest_addr;
-    dest_addr.sin_addr.s_addr = inet_addr(config->host_ip);
-    dest_addr.sin_family = AF_INET;
-    dest_addr.sin_port = htons(config->client_remote_ports.control_port);
+    espfsp_set_addr(&dest_addr, &remote_addr, config->remote.control_port);
 
     while (1)
     {
-        int err;
+        esp_err_t ret = ESP_OK;
+        int sock = 0;
 
-        int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-        if (sock < 0)
+        ret = espfsp_create_tcp_client(&sock, config->local.control_port, &dest_addr);
+        if (ret != ESP_OK)
         {
-            ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+            ESP_LOGE(TAG, "Create TCP client failed");
             continue;
         }
 
-        ESP_LOGI(TAG, "Socket created");
-
-        err = bind(sock, (struct sockaddr *)&control_addr, sizeof(control_addr));
-        if (err < 0)
-        {
-            ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
-            close(sock);
-            continue;
-        }
-
-        ESP_LOGI(TAG, "Connecting to %s:%d", config->host_ip, config->client_remote_ports.control_port);
-
-        err = connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-        if (err != 0)
-        {
-            ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
-            close(sock);
-            continue;
-        }
-
-        ESP_LOGI(TAG, "Successfully connected");
+        ESP_LOGI(TAG, "Start processing messages");
 
         process_control_connection(sock);
 
-        ESP_LOGE(TAG, "Shutting down socket and restarting...");
-        shutdown(sock, 0);
-        close(sock);
+        ESP_LOGE(TAG, "Shut down socket and restart...");
+
+        ret = espfsp_remove_host(sock);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Remove TCP client failed");
+            break;
+        }
     }
 
     vTaskDelete(NULL);

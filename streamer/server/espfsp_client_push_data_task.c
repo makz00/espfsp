@@ -11,9 +11,9 @@
 
 #include "espfsp_server.h"
 #include "espfsp_sock_op.h"
+#include "espfsp_message_buffer.h"
 #include "server/espfsp_client_push_data_task.h"
-#include "server/espfsp_client_push_data_message_processor.h"
-#include "server/espfsp_server_state_def.h"
+#include "server/espfsp_state_def.h"
 
 static const char *TAG = "ESPFSP_SERVER_CLIENT_PUSH_DATA_TASK";
 
@@ -29,7 +29,7 @@ static void process_receiver_connection(int sock, espfsp_server_instance_t *inst
 
     while (1)
     {
-        esp_err_t ret = espfsp_udp_receive(sock, rx_buffer, sizeof(espfsp_message_t));
+        esp_err_t ret = espfsp_receive(sock, rx_buffer, sizeof(espfsp_message_t));
         if (ret == ESP_OK)
         {
             // ESP_LOGI(
@@ -40,7 +40,7 @@ static void process_receiver_connection(int sock, espfsp_server_instance_t *inst
             //     ((espfsp_message_t *)rx_buffer)->timestamp.tv_sec,
             //     ((espfsp_message_t *)rx_buffer)->timestamp.tv_usec);
 
-            streamer_central_process_message((espfsp_message_t *)rx_buffer, instance);
+            espfsp_message_buffer_process_message((espfsp_message_t *)rx_buffer, &instance->receiver_buffer);
         }
         else
         {
@@ -53,10 +53,6 @@ static void process_receiver_connection(int sock, espfsp_server_instance_t *inst
 void espfsp_server_client_push_data_task(void *pvParameters)
 {
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) pvParameters;
-
-    assert(instance != NULL);
-    assert(instance->config != NULL);
-
     const espfsp_server_config_t *config = instance->config;
 
     while (1)

@@ -13,7 +13,7 @@
 
 #include "espfsp_server.h"
 #include "server/espfsp_client_push_session_and_control_task.h"
-#include "server/espfsp_server_state_def.h"
+#include "server/espfsp_state_def.h"
 
 static const char *TAG = "ESPFSP_SERVER_CLIENT_PUSH_SESSION_AND_CONTROL_TASK";
 
@@ -154,10 +154,6 @@ static void process_control_connection(int sock)
 void espfsp_server_client_push_session_and_control_task(void *pvParameters)
 {
     const espfsp_server_instance_t *instance = (espfsp_server_instance_t *) pvParameters;
-
-    assert(instance != NULL);
-    assert(instance->config != NULL);
-
     const espfsp_server_config_t *config = instance->config;
 
     while (1)

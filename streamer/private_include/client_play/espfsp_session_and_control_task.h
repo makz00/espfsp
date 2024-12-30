@@ -5,4 +5,4 @@
 
 #pragma once
 
-void streamer_client_controler_task(void *pvParameters);
+void espfsp_client_play_session_and_control_task(void *pvParameters);

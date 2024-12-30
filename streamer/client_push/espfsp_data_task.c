@@ -16,7 +16,7 @@
 #include "espfsp_client_push.h"
 #include "espfsp_sock_op.h"
 #include "client_push/espfsp_data_task.h"
-#include "client_push/espfsp_client_push_state_def.h"
+#include "client_push/espfsp_state_def.h"
 
 static const char *TAG = "ESPFSP_CLIENT_PUSH_DATA_TASK";
 
@@ -62,10 +62,6 @@ static void process_sender_connection(int sock, const espfsp_client_push_config_
 void espfsp_client_push_data_task(void *pvParameters)
 {
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) pvParameters;
-
-    assert(instance != NULL);
-    assert(instance->config != NULL);
-
     const espfsp_client_push_config_t *config = instance->config;
 
     struct sockaddr_in dest_addr;

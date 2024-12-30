@@ -10,6 +10,7 @@
 
 #include "espfsp_client_play.h"
 #include "espfsp_message_defs.h"
+#include "espfsp_message_buffer.h"
 
 #define CONFIG_ESPFSP_CLIENT_PLAY_MAX_INSTANCES 1
 
@@ -18,12 +19,9 @@ typedef struct
     TaskHandle_t data_task_handle;
     TaskHandle_t session_and_control_task_handle;
     espfsp_client_play_config_t *config;
-    espfsp_message_assembly_t *fbs_messages_buf;
     bool used;
 
-    QueueHandle_t frameQueue;
-    espfsp_fb_t *s_fb;
-    espfsp_message_assembly_t *s_ass;
+    espfsp_receiver_buffer_t receiver_buffer;
 } espfsp_client_play_instance_t;
 
 typedef struct

@@ -5,4 +5,4 @@
 
 #pragma once
 
-void streamer_client_receiver_task(void *pvParameters);
+void espfsp_client_play_data_task(void *pvParameters);

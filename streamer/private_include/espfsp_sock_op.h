@@ -13,9 +13,9 @@
 void espfsp_set_addr(struct sockaddr_in *addr, const struct esp_ip4_addr *esp_addr, int port);
 void espfsp_set_local_addr(struct sockaddr_in *addr, int port);
 
-esp_err_t espfsp_udp_send_whole_fb(int sock, espfsp_fb_t *fb);
-esp_err_t espfsp_udp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr *dest_addr);
-esp_err_t espfsp_udp_receive(int sock, char *rx_buffer, int rx_buffer_len);
+esp_err_t espfsp_send_whole_fb(int sock, espfsp_fb_t *fb);
+esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr *dest_addr);
+esp_err_t espfsp_receive(int sock, char *rx_buffer, int rx_buffer_len);
 
 esp_err_t espfsp_tcp_accept(int *listen_sock, int *sock, struct sockaddr_in *source_addr, socklen_t *addr_len);
 

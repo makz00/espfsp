@@ -79,7 +79,7 @@ static int send_all(int sock, u_int8_t *buffer, size_t n)
     return 1;
 }
 
-esp_err_t espfsp_udp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr *dest_addr)
+esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr *dest_addr)
 {
     espfsp_message_t message = {
         .len = fb->len,
@@ -114,7 +114,7 @@ esp_err_t espfsp_udp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr
     return ESP_OK;
 }
 
-esp_err_t espfsp_udp_send_whole_fb(int sock, espfsp_fb_t *fb)
+esp_err_t espfsp_send_whole_fb(int sock, espfsp_fb_t *fb)
 {
     espfsp_message_t message = {
         .len = fb->len,
@@ -149,7 +149,7 @@ esp_err_t espfsp_udp_send_whole_fb(int sock, espfsp_fb_t *fb)
     return ESP_OK;
 }
 
-esp_err_t espfsp_udp_receive(int sock, char *rx_buffer, int rx_buffer_len)
+esp_err_t espfsp_receive(int sock, char *rx_buffer, int rx_buffer_len)
 {
     int accepted_error_count = 5;
     int received_bytes = 0;
@@ -211,9 +211,7 @@ esp_err_t espfsp_tcp_accept(int *listen_sock, int *sock, struct sockaddr_in *sou
 esp_err_t espfsp_create_tcp_server(int *sock, int port)
 {
     struct sockaddr_in addr;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    espfsp_set_local_addr(&addr, port);
 
     *sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (*sock < 0)
@@ -253,9 +251,7 @@ esp_err_t espfsp_create_tcp_server(int *sock, int port)
 esp_err_t espfsp_create_tcp_client(int *sock, int client_port, struct sockaddr_in *server_addr)
 {
     struct sockaddr_in client_addr;
-    client_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    client_addr.sin_family = AF_INET;
-    client_addr.sin_port = htons(client_port);
+    espfsp_set_local_addr(&client_addr, client_port);
 
     *sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (sock < 0)
@@ -292,9 +288,7 @@ esp_err_t espfsp_create_tcp_client(int *sock, int client_port, struct sockaddr_i
 esp_err_t espfsp_create_udp_server(int *sock, int port)
 {
     struct sockaddr_in addr;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    espfsp_set_local_addr(&addr, port);
 
     *sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (sock < 0)
@@ -318,12 +312,10 @@ esp_err_t espfsp_create_udp_server(int *sock, int port)
     return ESP_OK;
 }
 
-esp_err_t espfsp_create_udp_client(int *sock, int port, struct sockaddr_in *server_addr)
+esp_err_t espfsp_create_udp_client(int *sock, int client_port, struct sockaddr_in *server_addr)
 {
-    struct sockaddr_in addr;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    struct sockaddr_in client_addr;
+    espfsp_set_local_addr(&client_addr, client_port);
 
     *sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (*sock < 0)
@@ -335,7 +327,7 @@ esp_err_t espfsp_create_udp_client(int *sock, int port, struct sockaddr_in *serv
     ESP_LOGI(TAG, "UDP client socket created");
     int err = 0;
 
-    err = bind(*sock, (struct sockaddr *)&addr, sizeof(addr));
+    err = bind(*sock, (struct sockaddr *)&client_addr, sizeof(client_addr));
     if (err < 0)
     {
         ESP_LOGE(TAG, "UDP client socket unable to bind: errno %d", errno);

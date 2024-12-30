@@ -16,8 +16,9 @@
 
 #include "espfsp_server.h"
 #include "espfsp_sock_op.h"
+#include "espfsp_message_buffer.h"
 #include "server/espfsp_client_play_data_task.h"
-#include "server/espfsp_server_state_def.h"
+#include "server/espfsp_state_def.h"
 
 static const char *TAG = "ESPFSP_SERVER_CLIENT_PLAY_DATA_TASK";
 
@@ -61,52 +62,6 @@ static esp_err_t wait_for_nat_bullet_from_accessor(int sock, struct sockaddr_sto
     return ESP_OK;
 }
 
-#define FB_GET_TIMEOUT (4000 / portTICK_PERIOD_MS)
-
-static espfsp_fb_t *get_fb(espfsp_server_instance_t *instance)
-{
-    if (instance->s_fb == NULL)
-    {
-        ESP_LOGE(TAG, "Frame buffer has to be allocated first with init function");
-        return NULL;
-    }
-
-    BaseType_t xStatus = xQueueReceive(instance->frameQueue, instance->s_ass, FB_GET_TIMEOUT);
-    if (xStatus != pdTRUE)
-    {
-        ESP_LOGE(TAG, "Cannot read assembly from queue");
-        return NULL;
-    }
-
-    instance->s_fb->len = instance->s_ass->len;
-    instance->s_fb->width = instance->s_ass->width;
-    instance->s_fb->height = instance->s_ass->height;
-    instance->s_fb->timestamp = instance->s_ass->timestamp;
-    instance->s_fb->buf = (char *) instance->s_ass->buf;
-
-    UBaseType_t elems = uxQueueMessagesWaiting(instance->frameQueue);
-    ESP_LOGI(TAG, "There is %d elems in queue now", elems);
-
-    return instance->s_fb;
-}
-
-static void fb_return(espfsp_server_instance_t *instance, espfsp_fb_t *fb)
-{
-    if (instance->s_fb == NULL)
-    {
-        ESP_LOGE(TAG, "Frame buffer has to be allocated first with init function");
-        return;
-    }
-
-    if (instance->s_ass == NULL)
-    {
-        ESP_LOGE(TAG, "Frame buffer has to be took first with fb get function");
-        return;
-    }
-
-    instance->s_ass->bits = MSG_ASS_PRODUCER_OWNED_VAL | MSG_ASS_FREE_VAL;
-}
-
 static void process_sender_connection(int sock, espfsp_server_instance_t *instance)
 {
     esp_err_t ret = 0;
@@ -125,16 +80,16 @@ static void process_sender_connection(int sock, espfsp_server_instance_t *instan
 
     while (1)
     {
-        espfsp_fb_t *fb = streamer_central_fb_get();
+        espfsp_fb_t *fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer);
         if (!fb)
         {
             ESP_LOGE(TAG, "FB capture Failed");
             continue;
         }
 
-        ret = espfsp_udp_send_whole_fb_to(sock, fb, (struct sockaddr *)&accessor_addr);
+        ret = espfsp_send_whole_fb_to(sock, fb, (struct sockaddr *)&accessor_addr);
 
-        streamer_central_fb_return(fb);
+        espfsp_message_buffer_return_fb(&instance->receiver_buffer);
 
         if (ret < 0)
         {
@@ -149,10 +104,6 @@ static void process_sender_connection(int sock, espfsp_server_instance_t *instan
 void espfsp_server_client_play_data_task(void *pvParameters)
 {
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) pvParameters;
-
-    assert(instance != NULL);
-    assert(instance->config != NULL);
-
     const espfsp_server_config_t *config = instance->config;
 
     while (1)
