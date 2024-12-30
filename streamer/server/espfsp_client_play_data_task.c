@@ -9,7 +9,7 @@
 #include "esp_log.h"
 
 #include "esp_netif.h"
-#include "lwip/sockets.h"
+#include <sys/socket.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

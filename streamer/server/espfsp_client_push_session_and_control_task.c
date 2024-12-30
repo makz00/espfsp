@@ -4,9 +4,13 @@
  */
 
 #include <string.h>
+#include <errno.h>
 
-#include "esp_err.h"
-#include "esp_log.h"
+#include <esp_err.h>
+#include <esp_log.h>
+
+#include "esp_netif.h"
+#include <sys/socket.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

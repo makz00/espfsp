@@ -128,7 +128,7 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
     };
 
     err = espfsp_message_buffer_init(&instance->receiver_buffer, &receiver_buffer_config);
-    if (ret != ESP_OK)
+    if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Buffer initialization failed");
         return NULL;

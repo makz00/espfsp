@@ -309,7 +309,7 @@ void espfsp_server_deinit(espfsp_server_handler_t handler)
         return;
     }
 
-    esp_err_t err = remove_server((espfsp_serer_instance_t *) handler);
+    esp_err_t err = remove_server((espfsp_server_instance_t *) handler);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Server removal failed");
