@@ -266,7 +266,7 @@ static esp_err_t remove_server(espfsp_server_instance_t *instance)
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Buffer initialization failed");
-        return NULL;
+        return ret;
     }
 
     free(instance->config);

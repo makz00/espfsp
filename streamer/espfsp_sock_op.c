@@ -193,14 +193,14 @@ esp_err_t espfsp_tcp_accept(int *listen_sock, int *sock, struct sockaddr_in *sou
     int keep_alive = 1;
     char addr_str[128];
 
-    int sock = accept(listen_sock, (struct sockaddr *)source_addr, addr_len);
-    if (sock < 0)
+    *sock = accept(*listen_sock, (struct sockaddr *)source_addr, addr_len);
+    if (*sock < 0)
     {
         ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
         return ESP_FAIL;
     }
 
-    setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keep_alive, sizeof(int));
+    setsockopt(*sock, SOL_SOCKET, SO_KEEPALIVE, &keep_alive, sizeof(int));
 
     inet_ntoa_r(source_addr->sin_addr, addr_str, sizeof(addr_str) - 1);
 
@@ -254,7 +254,7 @@ esp_err_t espfsp_create_tcp_client(int *sock, int client_port, struct sockaddr_i
     espfsp_set_local_addr(&client_addr, client_port);
 
     *sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    if (sock < 0)
+    if (*sock < 0)
     {
         ESP_LOGE(TAG, "Unable to create TCP client socket: errno %d", errno);
         return ESP_FAIL;
@@ -267,7 +267,7 @@ esp_err_t espfsp_create_tcp_client(int *sock, int client_port, struct sockaddr_i
     if (err != 0)
     {
         ESP_LOGE(TAG, "TCP client socket unable to bind: errno %d", errno);
-        close(sock);
+        close(*sock);
         return ESP_FAIL;
     }
 
@@ -277,7 +277,7 @@ esp_err_t espfsp_create_tcp_client(int *sock, int client_port, struct sockaddr_i
     if (err != 0)
     {
         ESP_LOGE(TAG, "TCP client socket unable to connect: errno %d", errno);
-        close(sock);
+        close(*sock);
         return ESP_FAIL;
     }
 
@@ -291,7 +291,7 @@ esp_err_t espfsp_create_udp_server(int *sock, int port)
     espfsp_set_local_addr(&addr, port);
 
     *sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-    if (sock < 0)
+    if (*sock < 0)
     {
         ESP_LOGE(TAG, "Unable to create UDP server socket: errno %d", errno);
         return ESP_FAIL;
@@ -300,11 +300,11 @@ esp_err_t espfsp_create_udp_server(int *sock, int port)
     ESP_LOGI(TAG, "UDP server socket created");
     int err = 0;
 
-    err = bind(sock, (struct sockaddr *)&addr, sizeof(addr));
+    err = bind(*sock, (struct sockaddr *)&addr, sizeof(addr));
     if (err < 0)
     {
         ESP_LOGE(TAG, "UDP server socket unable to bind: errno %d", errno);
-        close(sock);
+        close(*sock);
         return ESP_FAIL;
     }
 
@@ -341,7 +341,7 @@ esp_err_t espfsp_create_udp_client(int *sock, int client_port, struct sockaddr_i
     if (err != 0)
     {
         ESP_LOGE(TAG, "UDP client socket unable to connect: errno %d", errno);
-        close(sock);
+        close(*sock);
         return ESP_FAIL;
     }
 

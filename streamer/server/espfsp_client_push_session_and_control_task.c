@@ -15,6 +15,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "espfsp_sock_op.h"
 #include "espfsp_server.h"
 #include "server/espfsp_client_push_session_and_control_task.h"
 #include "server/espfsp_state_def.h"

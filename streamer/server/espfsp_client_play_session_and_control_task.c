@@ -16,6 +16,7 @@
 #include "freertos/task.h"
 
 #include "espfsp_server.h"
+#include "espfsp_sock_op.h"
 #include "server/espfsp_client_play_session_and_control_task.h"
 #include "server/espfsp_state_def.h"
 

@@ -12,6 +12,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "espfsp_sock_op.h"
 #include "espfsp_client_push.h"
 #include "client_push/espfsp_session_and_control_task.h"
 #include "client_push/espfsp_state_def.h"
@@ -126,7 +127,7 @@ void espfsp_client_push_session_and_control_task(void *pvParameters)
     const espfsp_client_push_config_t *config = instance->config;
 
     struct sockaddr_in dest_addr;
-    espfsp_set_addr(&dest_addr, &config->remote_addr.addr, config->remote.control_port);
+    espfsp_set_addr(&dest_addr, &config->remote_addr, config->remote.control_port);
 
     while (1)
     {

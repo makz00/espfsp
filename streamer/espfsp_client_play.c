@@ -207,7 +207,7 @@ static esp_err_t remove_client_play(espfsp_client_play_instance_t *instance)
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Buffer initialization failed");
-        return NULL;
+        return ret;
     }
 
     free(instance->config);
