@@ -1,11 +1,22 @@
 set(idf_version "${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}")
 
 set(srcs
-    espfsp_client_play.c
-    espfsp_client_push.c
-    espfsp_server.c
-    espfsp_sock_op.c
+    streamer/espfsp_client_play.c
+    streamer/espfsp_client_push.c
+    streamer/espfsp_server.c
+    streamer/espfsp_sock_op.c
+    streamer/espfsp_message_buffer.c
 
+    streamer/client_play/espfsp_data_task.c
+    streamer/client_play/espfsp_session_and_control_task.c
+
+    streamer/client_push/espfsp_data_task.c
+    streamer/client_push/espfsp_session_and_control_task.c
+
+    streamer/server/espfsp_client_play_data_task.c
+    streamer/server/espfsp_client_play_session_and_control_task.c
+    streamer/server/espfsp_client_push_data_task.c
+    streamer/server/espfsp_client_push_session_and_control_task.c
 )
 
 set(priv_include_dirs
@@ -14,9 +25,6 @@ set(priv_include_dirs
 
 set(include_dirs
     streamer/include
-    streamer/include/camera
-    streamer/include/central
-    streamer/include/client
 )
 
 set(priv_requires
