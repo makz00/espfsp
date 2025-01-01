@@ -37,8 +37,16 @@ espfsp_fb_t *espfsp_client_play_get_fb(espfsp_client_play_handler_t handler);
 
 esp_err_t espfsp_client_play_return_fb(espfsp_client_play_handler_t handler, espfsp_fb_t *fb);
 
+esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler);
+
+esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler);
+
 esp_err_t espfsp_client_play_reconfigure_frame(espfsp_client_play_handler_t handler, espfsp_frame_config_t *frame_config);
 
 esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handler, espfsp_cam_config_t *cam_config);
 
 esp_err_t espfsp_client_play_reconfigure_protocol_params(espfsp_client_play_handler_t handler);
+
+esp_err_t espfsp_client_play_get_sources(espfsp_client_play_handler_t handler);
+
+esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler);

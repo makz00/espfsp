@@ -303,3 +303,15 @@ esp_err_t espfsp_client_play_reconfigure_protocol_params(espfsp_client_play_hand
     ESP_LOGE(TAG, "NOT IMPLEMENTED");
     return ESP_FAIL;
 }
+
+esp_err_t espfsp_client_play_get_sources(espfsp_client_play_handler_t handler)
+{
+    ESP_LOGE(TAG, "NOT IMPLEMENTED");
+    return ESP_FAIL;
+}
+
+esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler)
+{
+    ESP_LOGE(TAG, "NOT IMPLEMENTED");
+    return ESP_FAIL;
+}

@@ -18,8 +18,6 @@
 #define MSG_ASS_FREE_VAL (0 << 0)
 #define MSG_ASS_USED_VAL (1 << 0)
 
-#define MESSAGE_BUFFER_SIZE 1400
-
 typedef struct
 {
     size_t len;
