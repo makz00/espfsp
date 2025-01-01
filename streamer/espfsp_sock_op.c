@@ -79,6 +79,18 @@ static int send_all(int sock, u_int8_t *buffer, size_t n)
     return 1;
 }
 
+esp_err_t espfsp_send(int sock, char *rx_buffer, int rx_buffer_len)
+{
+    int err = send_all(sock, (u_int8_t *)&rx_buffer, rx_buffer_len);
+    if (err < 0)
+    {
+        ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr *dest_addr)
 {
     espfsp_message_t message = {
@@ -186,6 +198,33 @@ esp_err_t espfsp_receive(int sock, char *rx_buffer, int rx_buffer_len)
     }
 
     return ESP_OK;
+}
+
+esp_err_t espfsp_receive_no_block(int sock, char *rx_buffer, int rx_buffer_len, int *received)
+{
+    *received = 0;
+
+    struct sockaddr_storage source_addr;
+    socklen_t socklen = sizeof(source_addr);
+
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(sock, &readfds);
+
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+
+    int ret = select(sock + 1, &readfds, NULL, NULL, &timeout);
+    if (ret > 0 && FD_ISSET(sock, &readfds)) {
+        *received = recvfrom(sock, rx_buffer, rx_buffer_len, 0, (struct sockaddr *)&source_addr, &socklen);
+        return ESP_OK;
+    } else if (ret == 0) {
+        return ESP_OK;
+    } else {
+        ESP_LOGE(TAG, "Unknown error occured when read without blocking");
+        return ESP_FAIL;
+    }
 }
 
 esp_err_t espfsp_tcp_accept(int *listen_sock, int *sock, struct sockaddr_in *source_addr, socklen_t *addr_len)
