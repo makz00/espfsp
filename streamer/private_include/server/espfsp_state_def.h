@@ -11,6 +11,7 @@
 #include "espfsp_server.h"
 #include "espfsp_message_defs.h"
 #include "espfsp_message_buffer.h"
+#include "comm_proto/espfsp_comm_proto.h"
 
 #define CONFIG_ESPFSP_SERVER_MAX_INSTANCES 1
 #define CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS 1
@@ -30,6 +31,8 @@ typedef struct
     bool used;
 
     espfsp_receiver_buffer_t receiver_buffer;
+    espfsp_comm_proto_t client_push_comm_proto;
+    espfsp_comm_proto_t client_play_comm_proto;
 } espfsp_server_instance_t;
 
 typedef struct

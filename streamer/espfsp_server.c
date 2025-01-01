@@ -15,7 +15,9 @@
 #include "espfsp_server.h"
 #include "espfsp_message_defs.h"
 #include "espfsp_message_buffer.h"
+#include "comm_proto/espfsp_comm_proto.h"
 #include "server/espfsp_state_def.h"
+#include "server/espfsp_comm_proto_handlers.h"
 #include "server/espfsp_client_play_data_task.h"
 #include "server/espfsp_client_push_data_task.h"
 #include "server/espfsp_client_play_session_and_control_task.h"
@@ -28,6 +30,79 @@ static espfsp_server_state_t *state_ = NULL;
 static esp_err_t initialize_synchronizers(espfsp_server_instance_t * instance)
 {
     return ESP_OK;
+}
+
+static esp_err_t initialize_client_push_comm_proto(espfsp_server_instance_t *instance)
+{
+    esp_err_t ret = ESP_OK;
+
+    espfsp_comm_proto_config_t client_push_comm_proto_config = {
+        .callback_ctx = (void *) instance,
+        .buffered_actions = 3,
+    };
+
+    memset(client_push_comm_proto_config.req_callbacks, 0, sizeof(client_push_comm_proto_config.req_callbacks));
+    memset(client_push_comm_proto_config.resp_callbacks, 0, sizeof(client_push_comm_proto_config.resp_callbacks));
+
+    client_push_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = req_session_init_server_handler;
+    client_push_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = req_session_terminate_server_handler;
+    client_push_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_PING] = req_session_ping_server_handler;
+
+    ret = espfsp_comm_proto_init(&instance->client_push_comm_proto, &client_push_comm_proto_config);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Communication protocol initiation failed");
+        return ret;
+    }
+
+    return ret;
+}
+
+static esp_err_t initialize_client_play_comm_proto(espfsp_server_instance_t *instance)
+{
+    esp_err_t ret = ESP_OK;
+
+    espfsp_comm_proto_config_t client_play_comm_proto_config = {
+        .callback_ctx = (void *) instance,
+        .buffered_actions = 3,
+    };
+
+    memset(client_play_comm_proto_config.req_callbacks, 0, sizeof(client_play_comm_proto_config.req_callbacks));
+    memset(client_play_comm_proto_config.resp_callbacks, 0, sizeof(client_play_comm_proto_config.resp_callbacks));
+
+    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = req_session_init_server_handler;
+    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = req_session_terminate_server_handler;
+    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_PING] = req_session_ping_server_handler;
+    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_START_STREAM] = req_start_stream_server_handler;
+    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_STOP_STREAM] = req_stop_stream_server_handler;
+
+    ret = espfsp_comm_proto_init(&instance->client_play_comm_proto, &client_play_comm_proto_config);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Communication protocol initiation failed");
+        return ret;
+    }
+
+    return ret;
+}
+
+static esp_err_t initialize_comm_protos(espfsp_server_instance_t *instance)
+{
+    esp_err_t ret = ESP_OK;
+
+    ret = initialize_client_push_comm_proto(instance);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    ret = initialize_client_play_comm_proto(instance);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    return ret;
 }
 
 static esp_err_t start_client_push_data_task(espfsp_server_instance_t * instance)
@@ -195,6 +270,13 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Initialization of synchronizers failed");
+        return NULL;
+    }
+
+    err = initialize_comm_protos(instance);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Initialization of connection protocol failed");
         return NULL;
     }
 
