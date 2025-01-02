@@ -117,7 +117,7 @@ static esp_err_t execute_action(espfsp_comm_proto_t *comm_proto, int sock, espfs
     }
 
     comm_proto->state = ESPFSP_COMM_PROTO_STATE_LISTEN;
-    return ESP_OK;
+    return ret;
 }
 
 static esp_err_t execute_handler(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_action_t *action)
@@ -360,6 +360,57 @@ esp_err_t espfsp_comm_proto_stop_stream(espfsp_comm_proto_t *comm_proto, espfsp_
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Communication protocol stream stop failed");
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_comm_proto_session_ack(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_session_ack_message_t *msg)
+{
+    esp_err_t ret = insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_RESPONSE,
+        (uint8_t) ESPFSP_COMM_RESP_SESSION_ACK,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_proto_resp_session_ack_message_t));
+
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Communication protocol session ack failed");
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_comm_proto_session_pong(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_session_pong_message_t *msg)
+{
+    esp_err_t ret = insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_RESPONSE,
+        (uint8_t) ESPFSP_COMM_RESP_SESSION_PONG,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_proto_resp_session_pong_message_t));
+
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Communication protocol session pong failed");
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_comm_proto_ack(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_ack_message_t *msg)
+{
+    esp_err_t ret = insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_RESPONSE,
+        (uint8_t) ESPFSP_COMM_RESP_ACK,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_proto_resp_ack_message_t));
+
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Communication protocol ack failed");
     }
 
     return ret;

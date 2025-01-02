@@ -169,6 +169,21 @@ esp_err_t espfsp_message_buffer_deinit(espfsp_receiver_buffer_t *receiver_buffer
     return ESP_OK;
 }
 
+esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer)
+{
+    for (int i = 0; i < receiver_buffer->buffered_fbs; i++)
+    {
+        receiver_buffer->fbs_messages_buf[i].bits = MSG_ASS_PRODUCER_OWNED_VAL | MSG_ASS_FREE_VAL;
+    }
+
+    if (xQueueReset(receiver_buffer->frameQueue) != pdPASS) {
+        ESP_LOGE(TAG, "Queue reset unsuccessfully");
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
 espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer)
 {
     if (receiver_buffer->s_fb == NULL)

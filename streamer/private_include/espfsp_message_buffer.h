@@ -27,6 +27,9 @@ typedef struct {
 esp_err_t espfsp_message_buffer_init(espfsp_receiver_buffer_t *receiver_buffer, const espfsp_receiver_buffer_config_t *config);
 esp_err_t espfsp_message_buffer_deinit(espfsp_receiver_buffer_t *receiver_buffer);
 
+// Allowed to use only if no other task use receive_buffer
+esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer);
+
 espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer);
 esp_err_t espfsp_message_buffer_return_fb(espfsp_receiver_buffer_t *receiver_buffer);
 

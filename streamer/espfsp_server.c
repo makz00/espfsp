@@ -18,8 +18,6 @@
 #include "comm_proto/espfsp_comm_proto.h"
 #include "server/espfsp_state_def.h"
 #include "server/espfsp_comm_proto_handlers.h"
-#include "server/espfsp_client_play_data_task.h"
-#include "server/espfsp_client_push_data_task.h"
 #include "server/espfsp_client_play_session_and_control_task.h"
 #include "server/espfsp_client_push_session_and_control_task.h"
 
@@ -46,7 +44,6 @@ static esp_err_t initialize_client_push_comm_proto(espfsp_server_instance_t *ins
 
     client_push_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = req_session_init_server_handler;
     client_push_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = req_session_terminate_server_handler;
-    client_push_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_PING] = req_session_ping_server_handler;
 
     ret = espfsp_comm_proto_init(&instance->client_push_comm_proto, &client_push_comm_proto_config);
     if (ret != ESP_OK)
@@ -72,7 +69,6 @@ static esp_err_t initialize_client_play_comm_proto(espfsp_server_instance_t *ins
 
     client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = req_session_init_server_handler;
     client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = req_session_terminate_server_handler;
-    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_PING] = req_session_ping_server_handler;
     client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_START_STREAM] = req_start_stream_server_handler;
     client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_STOP_STREAM] = req_stop_stream_server_handler;
 
@@ -105,28 +101,6 @@ static esp_err_t initialize_comm_protos(espfsp_server_instance_t *instance)
     return ret;
 }
 
-static esp_err_t start_client_push_data_task(espfsp_server_instance_t * instance)
-{
-    BaseType_t xStatus;
-
-    xStatus = xTaskCreatePinnedToCore(
-        espfsp_server_client_push_data_task,
-        "espfsp_server_client_push_data_task",
-        instance->config->client_push_data_task_info.stack_size,
-        NULL,
-        instance->config->client_push_data_task_info.task_prio,
-        &instance->client_push_handlers[0].data_task_handle,
-        1);
-
-    if (xStatus != pdPASS)
-    {
-        ESP_LOGE(TAG, "Could not start receiver task!");
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}
-
 static esp_err_t start_client_push_session_and_control_task(espfsp_server_instance_t * instance)
 {
     BaseType_t xStatus;
@@ -138,27 +112,6 @@ static esp_err_t start_client_push_session_and_control_task(espfsp_server_instan
         NULL,
         instance->config->client_push_session_and_control_task_info.task_prio,
         &instance->client_push_handlers[0].session_and_control_task_handle);
-
-    if (xStatus != pdPASS)
-    {
-        ESP_LOGE(TAG, "Could not start receiver task!");
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}
-
-static esp_err_t start_client_play_data_task(espfsp_server_instance_t * instance)
-{
-    BaseType_t xStatus;
-
-    xStatus = xTaskCreate(
-        espfsp_server_client_play_data_task,
-        "espfsp_server_client_play_data_task",
-        instance->config->client_play_data_task_info.stack_size,
-        NULL,
-        instance->config->client_play_data_task_info.task_prio,
-        &instance->client_play_handlers[0].data_task_handle);
 
     if (xStatus != pdPASS)
     {
@@ -194,22 +147,10 @@ static esp_err_t start_tasks(espfsp_server_instance_t * instance)
 {
     esp_err_t ret = ESP_OK;
 
-    ret = start_client_push_data_task(instance);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Data client push task has not been created successfully");
-        return ret;
-    }
-
     ret = start_client_push_session_and_control_task(instance);
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Session and control client push task has not been created successfully");
-        return ret;
-    }
-
-    ret = start_client_play_data_task(instance);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Data client play task has not been created successfully");
         return ret;
     }
 
@@ -251,6 +192,11 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
     }
 
     memcpy(instance->config, config, sizeof(espfsp_server_config_t));
+
+    instance->client_push_next_session_id = 1;
+    instance->client_play_next_session_id = 101;
+
+    memset(instance->session_data, 0, sizeof(instance->session_data));
 
     esp_err_t err = ESP_OK;
 
