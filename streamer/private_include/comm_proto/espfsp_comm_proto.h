@@ -21,6 +21,7 @@
 typedef enum {
     ESPFSP_COMM_PROTO_STATE_ACTION,
     ESPFSP_COMM_PROTO_STATE_LISTEN,
+    ESPFSP_COMM_PROTO_STATE_REPTIV,
     ESPFSP_COMM_PROTO_STATE_ERROR,
 } espfsp_comm_proto_state_t;
 
@@ -54,11 +55,15 @@ typedef struct {
 // msg_content parameter is structure representing message type
 // This kind of structures definitions are in *_resp.h and in *_req.h
 // Contex is defined by user of this interface, passed in config as callback_ctx
-typedef esp_err_t (*__espfsp_comm_proto_cb)(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx);
+typedef esp_err_t (*__espfsp_comm_proto_msg_cb)(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx);
+
+typedef esp_err_t (*__espfsp_comm_proto_cb)(espfsp_comm_proto_t *comm_proto, void *ctx);
 
 typedef struct {
-    __espfsp_comm_proto_cb req_callbacks[ESPFSP_COMM_REQ_MAX_NUMBER];
-    __espfsp_comm_proto_cb resp_callbacks[ESPFSP_COMM_RESP_MAX_NUMBER];
+    __espfsp_comm_proto_msg_cb req_callbacks[ESPFSP_COMM_REQ_MAX_NUMBER];
+    __espfsp_comm_proto_msg_cb resp_callbacks[ESPFSP_COMM_RESP_MAX_NUMBER];
+    __espfsp_comm_proto_cb repetive_callback;
+    uint64_t repetive_callback_freq_us;
     void *callback_ctx;
     int buffered_actions;
 } espfsp_comm_proto_config_t;

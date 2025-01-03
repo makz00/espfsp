@@ -9,6 +9,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "esp_timer.h"
+
 #include "espfsp_sock_op.h"
 #include "comm_proto/espfsp_comm_proto.h"
 
@@ -55,26 +57,22 @@ esp_err_t espfsp_comm_proto_deinit(espfsp_comm_proto_t *comm_proto)
 static int receive_action_from_sock(espfsp_comm_proto_t *comm_proto, int sock, espfsp_comm_proto_action_t *action)
 {
     esp_err_t err = ESP_OK;
-
     int received = 0;
 
     err = espfsp_receive_no_block(sock, (void *)&comm_proto->tlv_buffer, sizeof(espfsp_comm_proto_tlv_t), &received);
     if (err != ESP_OK)
     {
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
         return  -1;
     }
 
     if (received == 0)
     {
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_ACTION;
         return 0;
     }
 
     if (received != comm_proto->tlv_buffer.length + 4)
     {
-        ESP_LOGE(TAG, "Error receive TLV message");
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
+        ESP_LOGE(TAG, "Receive bytes does not match length in TLV message");
         return  -1;
     }
 
@@ -86,7 +84,6 @@ static int receive_action_from_sock(espfsp_comm_proto_t *comm_proto, int sock, e
     if (!action->data)
     {
         ESP_LOGE(TAG, "Allocation memory for sock received action failed");
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
         return  -1;
     }
 
@@ -105,7 +102,6 @@ static esp_err_t execute_local_action(espfsp_comm_proto_t *comm_proto, int sock,
     if (action->length > sizeof(comm_proto->tlv_buffer.value))
     {
         ESP_LOGE(TAG, "Size of given action is too big to fit in TLV buffer");
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
         return ESP_FAIL;
     }
 
@@ -115,12 +111,31 @@ static esp_err_t execute_local_action(espfsp_comm_proto_t *comm_proto, int sock,
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Send communicate failed");
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
         return ret;
     }
 
-    comm_proto->state = ESPFSP_COMM_PROTO_STATE_LISTEN;
     return ret;
+}
+
+static esp_err_t check_and_execute_action(
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_comm_proto_action_t *action,
+    __espfsp_comm_proto_msg_cb *action_callbacks,
+    uint8_t action_max_index)
+{
+    if (action->subtype >= action_max_index)
+    {
+        ESP_LOGE(TAG, "Incorrect action subtype received");
+        return ESP_FAIL;
+    }
+
+    if (action_callbacks[action->subtype] == NULL)
+    {
+        ESP_LOGE(TAG, "Action handler not implemented");
+        return ESP_FAIL;
+    }
+
+    return action_callbacks[action->subtype](comm_proto, (void *) action->data, comm_proto->config->callback_ctx);
 }
 
 static esp_err_t execute_remote_action(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_action_t *action)
@@ -131,61 +146,36 @@ static esp_err_t execute_remote_action(espfsp_comm_proto_t *comm_proto, espfsp_c
     {
     case ESPFSP_COMM_PROTO_MSG_REQUEST:
 
-        if (action->subtype >= ESPFSP_COMM_REQ_MAX_NUMBER)
-        {
-            ESP_LOGE(TAG, "Incorrect request subtype received");
-            comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
-            return ESP_FAIL;
-        }
-
-        if (comm_proto->config->req_callbacks[action->subtype] == NULL)
-        {
-            ESP_LOGE(TAG, "Request handler not implemented");
-            comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
-            return ESP_FAIL;
-        }
-
-        ret = comm_proto->config->req_callbacks[action->subtype](
-            comm_proto, (void *) action->data ,comm_proto->config->callback_ctx);
+        ret = check_and_execute_action(
+            comm_proto, action, comm_proto->config->req_callbacks, ESPFSP_COMM_REQ_MAX_NUMBER);
         break;
 
     case ESPFSP_COMM_PROTO_MSG_RESPONSE:
 
-        if (action->subtype >= ESPFSP_COMM_RESP_MAX_NUMBER)
-        {
-            ESP_LOGE(TAG, "Incorrect response subtype received");
-            comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
-            return ESP_FAIL;
-        }
-
-        if (comm_proto->config->resp_callbacks[action->subtype] == NULL)
-        {
-            ESP_LOGE(TAG, "Response handler not implemented");
-            comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
-            return ESP_FAIL;
-        }
-
-        ret = comm_proto->config->resp_callbacks[action->subtype](
-            comm_proto, (void *) action->data ,comm_proto->config->callback_ctx);
+        ret = check_and_execute_action(
+            comm_proto, action, comm_proto->config->resp_callbacks, ESPFSP_COMM_RESP_MAX_NUMBER);
         break;
 
     default:
 
-        ESP_LOGE(TAG, "Message type is not implemented");
+        ESP_LOGE(TAG, "Action type is not implemented");
         return ESP_FAIL;
     }
 
-    if (ret != ESP_OK)
+    return ret;
+}
+
+static void change_state_base_ret(
+    espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_state_t next_state, esp_err_t ret_val)
+{
+    if (ret_val != ESP_OK)
     {
-        ESP_LOGE(TAG, "Installed handler failed");
         comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
     }
     else
     {
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_ACTION;
+        comm_proto->state = next_state;
     }
-
-    return ret;
 }
 
 esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
@@ -194,23 +184,17 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
     espfsp_comm_proto_action_t action;
 
     ESP_LOGI(TAG, "Start communication handling");
-    comm_proto->state = ESPFSP_COMM_PROTO_STATE_ACTION;
+
+    // Start from LSISTEN, as server actions are planned after received requests
+    comm_proto->state = ESPFSP_COMM_PROTO_STATE_LISTEN;
     comm_proto->en = 1;
+
+    int64_t reptv_last_called, reptv_now_called = esp_timer_get_time();
 
     while (comm_proto->en)
     {
         switch (comm_proto->state)
         {
-        case ESPFSP_COMM_PROTO_STATE_ACTION:
-
-            BaseType_t local_action_status = xQueueReceive(comm_proto->reqActionQueue, &action, 0);
-            if (local_action_status == pdPASS)
-            {
-                ret = execute_local_action(comm_proto, sock, &action);
-                free(action.data);
-            }
-            break;
-
         case ESPFSP_COMM_PROTO_STATE_LISTEN:
 
             int remote_action_status = receive_action_from_sock(comm_proto, sock, &action);
@@ -219,6 +203,40 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
                 ret = execute_remote_action(comm_proto, &action);
                 free(action.data);
             }
+            else if (remote_action_status < 0)
+            {
+                ret = ESP_FAIL;
+            }
+
+            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_ACTION, ret);
+            break;
+
+        case ESPFSP_COMM_PROTO_STATE_ACTION:
+
+            BaseType_t local_action_status = xQueueReceive(comm_proto->reqActionQueue, &action, 0);
+            if (local_action_status == pdPASS)
+            {
+                ret = execute_local_action(comm_proto, sock, &action);
+                free(action.data);
+            }
+
+            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_REPTIV, ret);
+            break;
+
+        case ESPFSP_COMM_PROTO_STATE_REPTIV:
+
+            if (comm_proto->config->repetive_callback != NULL)
+            {
+                reptv_now_called = esp_timer_get_time();
+
+                if (reptv_now_called - reptv_last_called >= comm_proto->config->repetive_callback_freq_us)
+                {
+                    ret = comm_proto->config->repetive_callback(comm_proto, comm_proto->config->callback_ctx);
+                    reptv_last_called = reptv_now_called;
+                }
+            }
+
+            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_LISTEN, ret);
             break;
 
         case ESPFSP_COMM_PROTO_STATE_ERROR:
@@ -237,6 +255,7 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 
 esp_err_t espfsp_comm_proto_stop(espfsp_comm_proto_t *comm_proto)
 {
+    // Safe asynchronious write as the other tash, after start, only reads this variable
     comm_proto->en = 0;
     return ESP_OK;
 }
