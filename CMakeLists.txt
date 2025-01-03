@@ -7,6 +7,8 @@ set(srcs
     streamer/espfsp_sock_op.c
     streamer/espfsp_message_buffer.c
 
+    streamer/comm_proto/espfsp_comm_proto.c
+
     streamer/client_play/espfsp_data_task.c
     streamer/client_play/espfsp_session_and_control_task.c
 
@@ -17,6 +19,7 @@ set(srcs
     streamer/server/espfsp_client_play_session_and_control_task.c
     streamer/server/espfsp_client_push_data_task.c
     streamer/server/espfsp_client_push_session_and_control_task.c
+    streamer/server/espfsp_comm_proto_handlers.c
 )
 
 set(priv_include_dirs
