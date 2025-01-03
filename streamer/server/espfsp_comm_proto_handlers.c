@@ -61,7 +61,7 @@ static esp_err_t find_client_type(espfsp_server_instance_t *instance, int sessio
         }
     }
 
-    ESP_LOGE("Cannot find client with session id=%d", session_id);
+    ESP_LOGE(TAG, "Cannot find client with session id=%d", session_id);
     return ESP_FAIL;
 }
 
