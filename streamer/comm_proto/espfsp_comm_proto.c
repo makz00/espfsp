@@ -27,8 +27,6 @@ esp_err_t espfsp_comm_proto_init(espfsp_comm_proto_t *comm_proto, espfsp_comm_pr
 
     memcpy(comm_proto->config, config, sizeof(espfsp_comm_proto_config_t));
 
-    comm_proto->state = ESPFSP_COMM_PROTO_STATE_ACTION;
-
     comm_proto->reqActionQueue = xQueueCreate(comm_proto->buffered_actions, sizeof(espfsp_comm_proto_action_t));
     if (comm_proto->reqActionQueue == NULL)
     {
@@ -43,6 +41,12 @@ esp_err_t espfsp_comm_proto_init(espfsp_comm_proto_t *comm_proto, espfsp_comm_pr
 esp_err_t espfsp_comm_proto_deinit(espfsp_comm_proto_t *comm_proto)
 {
     free(comm_proto->config);
+
+    espfsp_comm_proto_action_t action;
+    while (xQueueReceive(comm_proto->reqActionQueue, &action, 0) == pdPASS)
+    {
+        free(action.data);
+    }
     vQueueDelete(comm_proto->reqActionQueue);
 
     return ESP_OK;
@@ -87,11 +91,10 @@ static int receive_action_from_sock(espfsp_comm_proto_t *comm_proto, int sock, e
     }
 
     memcpy(action->data, comm_proto->tlv_buffer.value, comm_proto->tlv_buffer.length);
-
     return 1;
 }
 
-static esp_err_t execute_action(espfsp_comm_proto_t *comm_proto, int sock, espfsp_comm_proto_action_t *action)
+static esp_err_t execute_local_action(espfsp_comm_proto_t *comm_proto, int sock, espfsp_comm_proto_action_t *action)
 {
     esp_err_t ret = ESP_OK;
 
@@ -120,7 +123,7 @@ static esp_err_t execute_action(espfsp_comm_proto_t *comm_proto, int sock, espfs
     return ret;
 }
 
-static esp_err_t execute_handler(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_action_t *action)
+static esp_err_t execute_remote_action(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_action_t *action)
 {
     esp_err_t ret = ESP_OK;
 
@@ -135,14 +138,15 @@ static esp_err_t execute_handler(espfsp_comm_proto_t *comm_proto, espfsp_comm_pr
             return ESP_FAIL;
         }
 
-        if (ret = comm_proto->config->req_callbacks[action->subtype] == NULL)
+        if (comm_proto->config->req_callbacks[action->subtype] == NULL)
         {
             ESP_LOGE(TAG, "Request handler not implemented");
             comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
             return ESP_FAIL;
         }
 
-        ret = comm_proto->config->req_callbacks[action->subtype]((void *) action->data ,comm_proto->config->callback_ctx);
+        ret = comm_proto->config->req_callbacks[action->subtype](
+            comm_proto, (void *) action->data ,comm_proto->config->callback_ctx);
         break;
 
     case ESPFSP_COMM_PROTO_MSG_RESPONSE:
@@ -154,22 +158,21 @@ static esp_err_t execute_handler(espfsp_comm_proto_t *comm_proto, espfsp_comm_pr
             return ESP_FAIL;
         }
 
-        if (ret = comm_proto->config->resp_callbacks[action->subtype] == NULL)
+        if (comm_proto->config->resp_callbacks[action->subtype] == NULL)
         {
             ESP_LOGE(TAG, "Response handler not implemented");
             comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
             return ESP_FAIL;
         }
 
-        ret = comm_proto->config->resp_callbacks[action->subtype]((void *) action->data ,comm_proto->config->callback_ctx);
+        ret = comm_proto->config->resp_callbacks[action->subtype](
+            comm_proto, (void *) action->data ,comm_proto->config->callback_ctx);
         break;
 
     default:
 
         ESP_LOGE(TAG, "Message type is not implemented");
         return ESP_FAIL;
-
-        break;
     }
 
     if (ret != ESP_OK)
@@ -191,8 +194,10 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
     espfsp_comm_proto_action_t action;
 
     ESP_LOGI(TAG, "Start communication handling");
+    comm_proto->state = ESPFSP_COMM_PROTO_STATE_ACTION;
+    comm_proto->en = 1;
 
-    while (1)
+    while (comm_proto->en)
     {
         switch (comm_proto->state)
         {
@@ -201,7 +206,7 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
             BaseType_t local_action_status = xQueueReceive(comm_proto->reqActionQueue, &action, 0);
             if (local_action_status == pdPASS)
             {
-                ret = execute_action(comm_proto, sock, &action);
+                ret = execute_local_action(comm_proto, sock, &action);
                 free(action.data);
             }
             break;
@@ -211,39 +216,28 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
             int remote_action_status = receive_action_from_sock(comm_proto, sock, &action);
             if (remote_action_status > 0)
             {
-                ret = execute_handler(comm_proto, &action);
+                ret = execute_remote_action(comm_proto, &action);
                 free(action.data);
             }
             break;
 
-        case ESPFSP_COMM_PROTO_STATE_TEARDOWN:
-
-            return ret;
-
         case ESPFSP_COMM_PROTO_STATE_ERROR:
 
-            ESP_LOGE(TAG, "Error ocured");
-            if (ret == ESP_OK)
-            {
-                ESP_LOGE(TAG, "Return value corrected");
-                ret = ESP_FAIL;
-            }
-            return ret;
+            ESP_LOGE(TAG, "Communication protocol failed");
+            return ESP_FAIL;
 
         default:
 
-            ESP_LOGE(TAG, "Action not handled");
+            ESP_LOGE(TAG, "Communication protocol state not handled");
             comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
             break;
         }
     }
-
-    ESP_LOGI(TAG, "Stop communication handling");
-    return ret;
 }
 
 esp_err_t espfsp_comm_proto_stop(espfsp_comm_proto_t *comm_proto)
 {
+    comm_proto->en = 0;
     return ESP_OK;
 }
 

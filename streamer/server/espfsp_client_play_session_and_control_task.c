@@ -19,141 +19,14 @@
 #include "espfsp_sock_op.h"
 #include "server/espfsp_client_play_session_and_control_task.h"
 #include "server/espfsp_state_def.h"
+#include "comm_proto/espfsp_comm_proto.h"
 
 static const char *TAG = "ESPFSP_SERVER_CLIENT_PLAY_SESSION_AND_CONTROL_TASK";
 
-static const char *PAYLOAD_HELLO = "HELLO";
-static const char *PAYLOAD_READY = "READY";
-
-typedef enum
+static void handle_new_client_play_connection(espfsp_server_instance_t *instance, int sock)
 {
-    CONTROL_STATE_HELLO,
-    CONTROL_STATE_READY,
-    CONTROL_STATE_IDLE,
-} control_state_t;
-
-typedef enum
-{
-    CONTROL_STATE_RET_OK,
-    CONTROL_STATE_RET_FAIL,
-    CONTROL_STATE_RET_ERR,
-} control_state_ret_t;
-
-static control_state_ret_t process_control_handle_hello(int sock)
-{
-    char rx_buffer[128];
-
-    int ret = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-    if (ret < 0)
-    {
-        ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
-        return CONTROL_STATE_RET_FAIL;
-    }
-    else if (ret == 0)
-    {
-        ESP_LOGW(TAG, "Connection closed");
-        return CONTROL_STATE_RET_ERR;
-    }
-
-    if (ret != strlen(PAYLOAD_HELLO))
-    {
-        ESP_LOGE(TAG, "Not send whole message");
-        return CONTROL_STATE_RET_FAIL;
-    }
-
-    rx_buffer[ret] = 0;
-    ESP_LOGI(TAG, "Received %d bytes: %s", ret, rx_buffer);
-
-    if (strcmp(PAYLOAD_HELLO, rx_buffer) == 0)
-    {
-        return CONTROL_STATE_RET_OK;
-    }
-
-    ESP_LOGE(TAG, "Hello message did not match");
-    return CONTROL_STATE_RET_FAIL;
-}
-
-static control_state_ret_t process_control_handle_ready(int sock)
-{
-    char rx_buffer[128];
-
-    int ret = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-    if (ret < 0)
-    {
-        ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
-        return CONTROL_STATE_RET_FAIL;
-    }
-    else if (ret == 0)
-    {
-        ESP_LOGW(TAG, "Connection closed");
-        return CONTROL_STATE_RET_ERR;
-    }
-
-    if (ret != strlen(PAYLOAD_READY))
-    {
-        ESP_LOGE(TAG, "Not send whole message");
-        return CONTROL_STATE_RET_FAIL;
-    }
-
-    rx_buffer[ret] = 0;
-    ESP_LOGI(TAG, "Received %d bytes: %s", ret, rx_buffer);
-
-    if (strcmp(PAYLOAD_READY, rx_buffer) == 0)
-    {
-        return CONTROL_STATE_RET_OK;
-    }
-
-    ESP_LOGE(TAG, "Hello message did not match");
-    return CONTROL_STATE_RET_FAIL;
-}
-
-static void process_control_connection(int sock)
-{
-    control_state_ret_t ret;
-    control_state_t state;
-
-    state = CONTROL_STATE_HELLO;
-
-    while (1)
-    {
-        switch (state)
-        {
-        case CONTROL_STATE_HELLO:
-            ret = process_control_handle_hello(sock);
-
-            if (ret == CONTROL_STATE_RET_OK)
-            {
-                ESP_LOGI(TAG, "State HELLO reached");
-                state = CONTROL_STATE_READY;
-            }
-            break;
-
-        case CONTROL_STATE_READY:
-            ret = process_control_handle_ready(sock);
-
-            if (ret == CONTROL_STATE_RET_OK)
-            {
-                ESP_LOGI(TAG, "State READY reached");
-                state = CONTROL_STATE_IDLE;
-            }
-            else if (ret == CONTROL_STATE_RET_FAIL)
-            {
-                state = CONTROL_STATE_HELLO;
-            }
-            break;
-
-        case CONTROL_STATE_IDLE:
-            ESP_LOGI(TAG, "State IDLE reached");
-            vTaskSuspend(NULL);
-            break;
-        }
-
-        if (ret == CONTROL_STATE_RET_ERR)
-        {
-            ESP_LOGE(TAG, "Control protocol end with critical error");
-            break;
-        }
-    }
+    // Spawn ping task
+    espfsp_comm_proto_run(&instance->client_play_comm_proto, sock);
 }
 
 void espfsp_server_client_play_session_and_control_task(void *pvParameters)
@@ -190,7 +63,7 @@ void espfsp_server_client_play_session_and_control_task(void *pvParameters)
 
             ESP_LOGI(TAG, "Start processing messages");
 
-            process_control_connection(sock);
+            handle_new_client_play_connection(instance, sock);
 
             ESP_LOGE(TAG, "Shut down socket and restart...");
 

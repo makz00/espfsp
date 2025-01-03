@@ -9,14 +9,15 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "server/espfsp_comm_proto_handlers.h"
 #include "comm_proto/espfsp_comm_proto.h"
+#include "server/espfsp_state_def.h"
+#include "server/espfsp_comm_proto_handlers.h"
 #include "server/espfsp_client_play_data_task.h"
 #include "server/espfsp_client_push_data_task.h"
 
 static const char *TAG = "SERVER_COMMUNICATION_PROTOCOL_HANDLERS";
 
-static init_session_data(espfsp_server_instance_t *instance, int session_id, espfsp_comm_proto_req_client_type_t client_type)
+static esp_err_t init_session_data(espfsp_server_instance_t *instance, int session_id, espfsp_comm_proto_req_client_type_t client_type)
 {
     for (int i = 0; i < CONFIG_ESPFSP_SERVER_MAX_CONNECTIONS; i++)
     {
@@ -30,21 +31,33 @@ static init_session_data(espfsp_server_instance_t *instance, int session_id, esp
         }
     }
 
-    ESP_LOGE("No resources to initiate new session for client");
+    ESP_LOGE(TAG, "No resources to initiate new session for client");
     return ESP_FAIL;
 }
 
-static find_client_type(espfsp_server_instance_t *instance, int session_id, espfsp_comm_proto_req_client_type_t *client_type)
+static esp_err_t  deinit_session_data(espfsp_server_instance_t *instance, int session_id)
 {
     for (int i = 0; i < CONFIG_ESPFSP_SERVER_MAX_CONNECTIONS; i++)
     {
-        if (instance->session_data[i] != NULL)
+        if (instance->session_data[i] != NULL && instance->session_data[i]->session_id == session_id)
         {
-            if (instance->session_data[i]->session_id == session_id)
-            {
-                *client_type = instance->session_data[i]->client_type;
-                return ESP_OK;
-            }
+            free(instance->session_data[i]);
+            return ESP_OK;
+        }
+    }
+
+    ESP_LOGE(TAG, "No resources to deinitiate session for client");
+    return ESP_FAIL;
+}
+
+static esp_err_t find_client_type(espfsp_server_instance_t *instance, int session_id, espfsp_comm_proto_req_client_type_t *client_type)
+{
+    for (int i = 0; i < CONFIG_ESPFSP_SERVER_MAX_CONNECTIONS; i++)
+    {
+        if (instance->session_data[i] != NULL && instance->session_data[i]->session_id == session_id)
+        {
+            *client_type = instance->session_data[i]->client_type;
+            return ESP_OK;
         }
     }
 
@@ -52,7 +65,26 @@ static find_client_type(espfsp_server_instance_t *instance, int session_id, espf
     return ESP_FAIL;
 }
 
-static esp_err_t handle_session_init_for_client_push(espfsp_comm_proto_t *comm_proto, espfsp_server_instance_t *instance)
+static esp_err_t get_active_client_push_session_id(espfsp_server_instance_t *instance, int *session_id)
+{
+    for (int i = 0; i < CONFIG_ESPFSP_SERVER_MAX_CONNECTIONS; i++)
+    {
+        if (instance->session_data[i] != NULL && instance->session_data[i]->client_type == ESPFSP_COMM_REQ_CLIENT_PUSH)
+        {
+            *session_id = instance->session_data[i]->session_id;
+            return ESP_OK;
+        }
+    }
+
+    ESP_LOGE(TAG, "Cannot find any CLIENT_PUSH");
+    return ESP_FAIL;
+}
+
+
+static esp_err_t handle_session_init_for_client_push(
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_comm_proto_req_session_init_message_t *msg,
+    espfsp_server_instance_t *instance)
 {
     esp_err_t ret = ESP_OK;
 
@@ -76,7 +108,10 @@ static esp_err_t handle_session_init_for_client_push(espfsp_comm_proto_t *comm_p
     return ret;
 }
 
-static esp_err_t handle_session_init_for_client_play(espfsp_comm_proto_t *comm_proto, espfsp_server_instance_t *instance)
+static esp_err_t handle_session_init_for_client_play(
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_comm_proto_req_session_init_message_t *msg,
+    espfsp_server_instance_t *instance)
 {
     esp_err_t ret = ESP_OK;
 
@@ -110,12 +145,12 @@ esp_err_t req_session_init_server_handler(espfsp_comm_proto_t *comm_proto, void 
     {
     case ESPFSP_COMM_REQ_CLIENT_PUSH:
 
-        ret = handle_session_init_for_client_push(comm_proto, instance);
+        ret = handle_session_init_for_client_push(comm_proto, msg, instance);
         break;
 
     case ESPFSP_COMM_REQ_CLIENT_PLAY:
 
-        ret = handle_session_init_for_client_play(comm_proto, instance);
+        ret = handle_session_init_for_client_play(comm_proto, msg, instance);
         break;
 
     default:
@@ -133,25 +168,13 @@ esp_err_t req_session_terminate_server_handler(espfsp_comm_proto_t *comm_proto, 
     espfsp_comm_proto_req_session_terminate_message_t *msg = (espfsp_comm_proto_req_session_terminate_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
 
-    return ret;
-}
-
-static esp_err_t get_active_client_push_session_id(espfsp_server_instance_t *instance, int *session_id)
-{
-    for (int i = 0; i < CONFIG_ESPFSP_SERVER_MAX_CONNECTIONS; i++)
+    ret = deinit_session_data(instance, msg->session_id);
+    if (ret != ESP_OK)
     {
-        if (instance->session_data[i] != NULL)
-        {
-            if (instance->session_data[i]->client_type == ESPFSP_COMM_REQ_CLIENT_PUSH)
-            {
-                *session_id = instance->session_data[i]->session_id;
-                return ESP_OK;
-            }
-        }
+        ESP_LOGE(TAG, "Deinitiation session failed");
     }
 
-    ESP_LOGE("Cannot find any CLIENT_PUSH");
-    return ESP_FAIL;
+    return ret;
 }
 
 static esp_err_t request_stream_start_from_client_push(espfsp_server_instance_t *instance)
@@ -159,7 +182,6 @@ static esp_err_t request_stream_start_from_client_push(espfsp_server_instance_t 
     esp_err_t ret = ESP_OK;
 
     int client_push_session_id = 0;
-
     ret = get_active_client_push_session_id(instance, &client_push_session_id);
     if (ret != ESP_OK)
     {
@@ -295,17 +317,8 @@ static esp_err_t stop_stream_tasks(espfsp_server_instance_t *instance)
 {
     esp_err_t ret = ESP_OK;
 
-    ret = start_client_push_data_task(instance);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Data client push task has not been created successfully");
-        return ret;
-    }
-
-    ret = start_client_play_data_task(instance);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Data client play task has not been created successfully");
-        return ret;
-    }
+    vTaskDelete(instance->client_push_handlers[0].data_task_handle);
+    vTaskDelete(instance->client_play_handlers[0].data_task_handle);
 
     return ret;
 }

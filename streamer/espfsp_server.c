@@ -25,11 +25,6 @@ static const char *TAG = "ESPFSP_SERVER";
 
 static espfsp_server_state_t *state_ = NULL;
 
-static esp_err_t initialize_synchronizers(espfsp_server_instance_t * instance)
-{
-    return ESP_OK;
-}
-
 static esp_err_t initialize_client_push_comm_proto(espfsp_server_instance_t *instance)
 {
     esp_err_t ret = ESP_OK;
@@ -93,6 +88,25 @@ static esp_err_t initialize_comm_protos(espfsp_server_instance_t *instance)
     }
 
     ret = initialize_client_play_comm_proto(instance);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    return ret;
+}
+
+static esp_err_t deinitialize_comm_protos(espfsp_server_instance_t *instance)
+{
+    esp_err_t ret = ESP_OK;
+
+    ret = espfsp_comm_proto_deinit(&instance->client_play_comm_proto);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    ret = espfsp_comm_proto_deinit(&instance->client_push_comm_proto);
     if (ret != ESP_OK)
     {
         return ret;
@@ -212,13 +226,6 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
         return NULL;
     }
 
-    err = initialize_synchronizers(instance);
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Initialization of synchronizers failed");
-        return NULL;
-    }
-
     err = initialize_comm_protos(instance);
     if (err != ESP_OK)
     {
@@ -243,17 +250,9 @@ static esp_err_t stop_tasks(espfsp_server_instance_t *instance)
     // inform sender task to stop sending data
     // inform session and control task to close the session
 
-    vTaskDelete(instance->client_push_handlers[0].data_task_handle);
     vTaskDelete(instance->client_push_handlers[0].session_and_control_task_handle);
-    vTaskDelete(instance->client_play_handlers[0].data_task_handle);
     vTaskDelete(instance->client_play_handlers[0].session_and_control_task_handle);
 
-    return ret;
-}
-
-static esp_err_t deinitialize_synchronizers(espfsp_server_instance_t *instance)
-{
-    esp_err_t ret = ESP_OK;
     return ret;
 }
 
@@ -283,11 +282,11 @@ static esp_err_t remove_server(espfsp_server_instance_t *instance)
         return ret;
     }
 
-    ret = deinitialize_synchronizers(instance);
+    ret = deinitialize_comm_protos(instance);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Deinitialization of synchronizers failed");
-        return ret;
+        ESP_LOGE(TAG, "Initialization of connection protocol failed");
+        return NULL;
     }
 
     ret = espfsp_message_buffer_deinit(&instance->receiver_buffer);

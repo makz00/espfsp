@@ -164,6 +164,8 @@ esp_err_t espfsp_message_buffer_deinit(espfsp_receiver_buffer_t *receiver_buffer
 
     // 2. Synchronizer deinitiation
 
+    espfsp_message_assembly_t *ass;
+    while (xQueueReceive(receiver_buffer->frameQueue, &ass, 0) == pdTRUE) {}
     vQueueDelete(receiver_buffer->frameQueue);
 
     return ESP_OK;
@@ -186,12 +188,6 @@ esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer)
 
 espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer)
 {
-    if (receiver_buffer->s_fb == NULL)
-    {
-        ESP_LOGE(TAG, "Frame buffer has to be allocated first with init function");
-        return NULL;
-    }
-
     BaseType_t xStatus = xQueueReceive(receiver_buffer->frameQueue, &receiver_buffer->s_ass, FB_GET_TIMEOUT);
     if (xStatus != pdTRUE)
     {
@@ -210,18 +206,6 @@ espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buf
 
 esp_err_t espfsp_message_buffer_return_fb(espfsp_receiver_buffer_t *receiver_buffer)
 {
-    if (receiver_buffer->s_fb == NULL)
-    {
-        ESP_LOGE(TAG, "Frame buffer has to be allocated first with init function");
-        return ESP_FAIL;
-    }
-
-    if (receiver_buffer->s_ass == NULL)
-    {
-        ESP_LOGE(TAG, "Frame buffer has to be took first with fb get function");
-        return ESP_FAIL;
-    }
-
     receiver_buffer->s_ass->bits = MSG_ASS_PRODUCER_OWNED_VAL | MSG_ASS_FREE_VAL;
     receiver_buffer->s_ass = NULL;
 

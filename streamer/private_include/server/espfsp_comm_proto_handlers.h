@@ -8,7 +8,6 @@
 #include "esp_err.h"
 
 #include "comm_proto/espfsp_comm_proto.h"
-#include "server/espfsp_state_def.h"
 
 esp_err_t req_session_init_server_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx);
 esp_err_t req_session_terminate_server_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx);
