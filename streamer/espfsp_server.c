@@ -15,104 +15,14 @@
 #include "espfsp_server.h"
 #include "espfsp_message_defs.h"
 #include "espfsp_message_buffer.h"
-#include "comm_proto/espfsp_comm_proto.h"
 #include "server/espfsp_state_def.h"
-#include "server/espfsp_comm_proto_handlers.h"
+#include "server/espfsp_comm_proto_conf.h"
+#include "server/espfsp_data_proto_conf.h"
 #include "server/espfsp_session_and_control_task.h"
 
 static const char *TAG = "ESPFSP_SERVER";
 
 static espfsp_server_state_t *state_ = NULL;
-
-static esp_err_t initialize_client_push_comm_proto(espfsp_server_instance_t *instance)
-{
-    esp_err_t ret = ESP_OK;
-
-    espfsp_comm_proto_config_t client_push_comm_proto_config = {
-        .callback_ctx = (void *) instance,
-        .buffered_actions = 3,
-    };
-
-    memset(client_push_comm_proto_config.req_callbacks, 0, sizeof(client_push_comm_proto_config.req_callbacks));
-    memset(client_push_comm_proto_config.resp_callbacks, 0, sizeof(client_push_comm_proto_config.resp_callbacks));
-
-    client_push_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = req_session_init_server_handler;
-    client_push_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = req_session_terminate_server_handler;
-
-    ret = espfsp_comm_proto_init(&instance->client_push_comm_proto, &client_push_comm_proto_config);
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol initiation failed");
-        return ret;
-    }
-
-    return ret;
-}
-
-static esp_err_t initialize_client_play_comm_proto(espfsp_server_instance_t *instance)
-{
-    esp_err_t ret = ESP_OK;
-
-    espfsp_comm_proto_config_t client_play_comm_proto_config = {
-        .callback_ctx = (void *) instance,
-        .buffered_actions = 3,
-    };
-
-    memset(client_play_comm_proto_config.req_callbacks, 0, sizeof(client_play_comm_proto_config.req_callbacks));
-    memset(client_play_comm_proto_config.resp_callbacks, 0, sizeof(client_play_comm_proto_config.resp_callbacks));
-
-    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = req_session_init_server_handler;
-    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = req_session_terminate_server_handler;
-    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_START_STREAM] = req_start_stream_server_handler;
-    client_play_comm_proto_config.req_callbacks[ESPFSP_COMM_REQ_STOP_STREAM] = req_stop_stream_server_handler;
-
-    ret = espfsp_comm_proto_init(&instance->client_play_comm_proto, &client_play_comm_proto_config);
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol initiation failed");
-        return ret;
-    }
-
-    return ret;
-}
-
-static esp_err_t initialize_comm_protos(espfsp_server_instance_t *instance)
-{
-    esp_err_t ret = ESP_OK;
-
-    ret = initialize_client_push_comm_proto(instance);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    ret = initialize_client_play_comm_proto(instance);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    return ret;
-}
-
-static esp_err_t deinitialize_comm_protos(espfsp_server_instance_t *instance)
-{
-    esp_err_t ret = ESP_OK;
-
-    ret = espfsp_comm_proto_deinit(&instance->client_play_comm_proto);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    ret = espfsp_comm_proto_deinit(&instance->client_push_comm_proto);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    return ret;
-}
 
 static esp_err_t start_client_push_session_and_control_task(espfsp_server_instance_t * instance)
 {
@@ -219,7 +129,7 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
 
     if (instance == NULL)
     {
-        ESP_LOGE(TAG, "No free instance to create client push");
+        ESP_LOGE(TAG, "No free instance to create server");
         return NULL;
     }
 
@@ -235,9 +145,17 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
     instance->client_push_next_session_id = 1;
     instance->client_play_next_session_id = 101;
 
-    memset(instance->session_data, 0, sizeof(instance->session_data));
+    memset(instance->client_push_session_data, 0, sizeof(instance->client_push_session_data));
+    memset(instance->client_play_session_data, 0, sizeof(instance->client_play_session_data));
 
     esp_err_t err = ESP_OK;
+
+    instance->sender_frame.buf = (char *) malloc(config->frame_config.frame_max_len);
+    if (instance->sender_frame.buf == NULL)
+    {
+        ESP_LOGE(TAG, "Sender frame buffer is not initialized");
+        return NULL;
+    }
 
     espfsp_receiver_buffer_config_t receiver_buffer_config = {
         .buffered_fbs = config->buffered_fbs,
@@ -251,10 +169,17 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
         return NULL;
     }
 
-    err = initialize_comm_protos(instance);
+    err = espfsp_server_comm_protos_init(instance);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Initialization of connection protocol failed");
+        ESP_LOGE(TAG, "Initialization of communication protocol failed");
+        return NULL;
+    }
+
+    err = espfsp_server_data_protos_init(instance);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Initialization of data protocol failed");
         return NULL;
     }
 
@@ -272,8 +197,8 @@ static esp_err_t stop_tasks(espfsp_server_instance_t *instance)
 {
     esp_err_t ret = ESP_OK;
 
-    // inform sender task to stop sending data
-    // inform session and control task to close the session
+    // Inform sender task to stop sending data
+    // Inform session and control task to close the session
 
     vTaskDelete(instance->client_push_handlers[0].session_and_control_task_handle);
     vTaskDelete(instance->client_play_handlers[0].session_and_control_task_handle);
@@ -307,10 +232,17 @@ static esp_err_t remove_server(espfsp_server_instance_t *instance)
         return ret;
     }
 
-    ret = deinitialize_comm_protos(instance);
+    ret = espfsp_server_data_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Initialization of connection protocol failed");
+        ESP_LOGE(TAG, "Initialization of data protocol failed");
+        return NULL;
+    }
+
+    ret = espfsp_server_comm_protos_deinit(instance);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Initialization of communication protocol failed");
         return NULL;
     }
 
@@ -321,6 +253,7 @@ static esp_err_t remove_server(espfsp_server_instance_t *instance)
         return ret;
     }
 
+    free(instance->sender_frame.buf);
     free(instance->config);
     instance->used = false;
 

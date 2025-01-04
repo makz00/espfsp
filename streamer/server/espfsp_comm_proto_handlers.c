@@ -35,7 +35,7 @@ static esp_err_t init_session_data(espfsp_server_instance_t *instance, int sessi
     return ESP_FAIL;
 }
 
-static esp_err_t  deinit_session_data(espfsp_server_instance_t *instance, int session_id)
+static esp_err_t deinit_session_data(espfsp_server_instance_t *instance, int session_id)
 {
     for (int i = 0; i < CONFIG_ESPFSP_SERVER_MAX_CONNECTIONS; i++)
     {

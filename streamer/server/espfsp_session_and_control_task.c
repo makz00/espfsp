@@ -9,9 +9,6 @@
 #include <esp_err.h>
 #include <esp_log.h>
 
-#include "esp_netif.h"
-#include <sys/socket.h>
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -26,7 +23,6 @@ static const char *TAG = "ESPFSP_SERVER_SESSION_AND_CONTROL_TASK";
 static void handle_new_connection(espfsp_session_and_control_task_data_t *data, int sock)
 {
     espfsp_comm_proto_t *comm_proto = data->comm_proto;
-    free(data);
 
     espfsp_comm_proto_run(comm_proto, sock);
 }
@@ -77,5 +73,6 @@ void espfsp_session_and_control_task(void *pvParameters)
         }
     }
 
+    free(data);
     vTaskDelete(NULL);
 }
