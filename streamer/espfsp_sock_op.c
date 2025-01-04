@@ -48,6 +48,7 @@ static int send_all_to(int sock, u_int8_t *buffer, size_t n, struct sockaddr *de
                 continue;
             }
 
+            ESP_LOGE(TAG, "Send to failed with errno %d", errno);
             return -1;
         }
         n_left -= bytes_sent;
@@ -70,6 +71,7 @@ static int send_all(int sock, u_int8_t *buffer, size_t n)
                 continue;
             }
 
+            ESP_LOGE(TAG, "Send to failed with errno %d", errno);
             return -1;
         }
         n_left -= bytes_sent;
@@ -77,53 +79,6 @@ static int send_all(int sock, u_int8_t *buffer, size_t n)
     }
 
     return 1;
-}
-
-esp_err_t espfsp_send(int sock, char *rx_buffer, int rx_buffer_len)
-{
-    int err = send_all(sock, (u_int8_t *)&rx_buffer, rx_buffer_len);
-    if (err < 0)
-    {
-        ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}
-
-esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr *dest_addr)
-{
-    espfsp_message_t message = {
-        .len = fb->len,
-        .width = fb->width,
-        .height = fb->height,
-        .timestamp.tv_sec = fb->timestamp.tv_sec,
-        .timestamp.tv_usec = fb->timestamp.tv_usec,
-        .msg_total = (fb->len / MESSAGE_BUFFER_SIZE) + (fb->len % MESSAGE_BUFFER_SIZE > 0 ? 1 : 0)};
-
-    for (size_t i = 0; i < fb->len; i += MESSAGE_BUFFER_SIZE)
-    {
-        int bytes_to_send = i + MESSAGE_BUFFER_SIZE <= fb->len ? MESSAGE_BUFFER_SIZE : fb->len - i;
-
-        message.msg_number = i / MESSAGE_BUFFER_SIZE;
-        message.msg_len = bytes_to_send;
-        memcpy(message.buf, fb->buf + i, bytes_to_send);
-
-        int err = send_all_to(sock, (u_int8_t *)&message, sizeof(espfsp_message_t), dest_addr);
-        if (err < 0)
-        {
-            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-            return ESP_FAIL;
-        }
-
-        const TickType_t xDelayMs = pdMS_TO_TICKS(10UL);
-        vTaskDelay(xDelayMs);
-    }
-    // Forced delay as receiver side cannot handle a lot of Frame Buffers in short time
-    const TickType_t xDelayMs = pdMS_TO_TICKS(50UL);
-    vTaskDelay(xDelayMs);
-
-    return ESP_OK;
 }
 
 esp_err_t espfsp_send_whole_fb(int sock, espfsp_fb_t *fb)
@@ -147,7 +102,7 @@ esp_err_t espfsp_send_whole_fb(int sock, espfsp_fb_t *fb)
         int err = send_all(sock, (u_int8_t *)&message, sizeof(espfsp_message_t));
         if (err < 0)
         {
-            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+            ESP_LOGE(TAG, "Error occurred during sending FB: errno %d", errno);
             return ESP_FAIL;
         }
 
@@ -161,22 +116,79 @@ esp_err_t espfsp_send_whole_fb(int sock, espfsp_fb_t *fb)
     return ESP_OK;
 }
 
-esp_err_t espfsp_receive(int sock, char *rx_buffer, int rx_buffer_len)
+esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr_in *dest_addr)
+{
+    espfsp_message_t message = {
+        .len = fb->len,
+        .width = fb->width,
+        .height = fb->height,
+        .timestamp.tv_sec = fb->timestamp.tv_sec,
+        .timestamp.tv_usec = fb->timestamp.tv_usec,
+        .msg_total = (fb->len / MESSAGE_BUFFER_SIZE) + (fb->len % MESSAGE_BUFFER_SIZE > 0 ? 1 : 0)};
+
+    for (size_t i = 0; i < fb->len; i += MESSAGE_BUFFER_SIZE)
+    {
+        int bytes_to_send = i + MESSAGE_BUFFER_SIZE <= fb->len ? MESSAGE_BUFFER_SIZE : fb->len - i;
+
+        message.msg_number = i / MESSAGE_BUFFER_SIZE;
+        message.msg_len = bytes_to_send;
+        memcpy(message.buf, fb->buf + i, bytes_to_send);
+
+        int err = send_all_to(sock, (u_int8_t *)&message, sizeof(espfsp_message_t), (struct sockaddr *) dest_addr);
+        if (err < 0)
+        {
+            ESP_LOGE(TAG, "Error occurred during sending FB to: errno %d", errno);
+            return ESP_FAIL;
+        }
+
+        const TickType_t xDelayMs = pdMS_TO_TICKS(10UL);
+        vTaskDelay(xDelayMs);
+    }
+    // Forced delay as receiver side cannot handle a lot of Frame Buffers in short time
+    const TickType_t xDelayMs = pdMS_TO_TICKS(50UL);
+    vTaskDelay(xDelayMs);
+
+    return ESP_OK;
+}
+
+esp_err_t espfsp_send(int sock, char *rx_buffer, int rx_buffer_len)
+{
+    int err = send_all(sock, (u_int8_t *)&rx_buffer, rx_buffer_len);
+    if (err < 0)
+    {
+        ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t espfsp_send_to(int sock, char *rx_buffer, int rx_buffer_len, struct sockaddr_in *source_addr)
+{
+    int err = send_all_to(sock, (u_int8_t *)&rx_buffer, rx_buffer_len, source_addr);
+    if (err < 0)
+    {
+        ESP_LOGE(TAG, "Error occurred during sending to: errno %d", errno);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t espfsp_receive_bytes(int sock, char *rx_buffer, int rx_buffer_len)
 {
     int accepted_error_count = 5;
     int received_bytes = 0;
 
-    struct sockaddr_storage source_addr;
-    socklen_t socklen = sizeof(source_addr);
-
     while (received_bytes < rx_buffer_len)
     {
-        int len = recvfrom(sock, rx_buffer, rx_buffer_len - received_bytes, 0, (struct sockaddr *)&source_addr, &socklen);
+        int len = recv(sock, rx_buffer, rx_buffer_len - received_bytes, 0);
         if (len < 0)
         {
             ESP_LOGE(TAG, "Receiving message failed: errno %d", errno);
             if (accepted_error_count-- > 0)
             {
+                ESP_LOGE(TAG, "Tries left: %d", accepted_error_count);
                 continue;
             }
             else
@@ -200,39 +212,154 @@ esp_err_t espfsp_receive(int sock, char *rx_buffer, int rx_buffer_len)
     return ESP_OK;
 }
 
-esp_err_t espfsp_receive_no_block(int sock, char *rx_buffer, int rx_buffer_len, int *received)
+esp_err_t espfsp_receive_bytes_from(int sock, char *rx_buffer, int rx_buffer_len, struct sockaddr_in *source_addr, socklen_t *addr_len)
+{
+    int accepted_error_count = 5;
+    int received_bytes = 0;
+
+    while (received_bytes < rx_buffer_len)
+    {
+        int len = recvfrom(sock, rx_buffer, rx_buffer_len - received_bytes, 0, (struct sockaddr *)source_addr, addr_len);
+        if (len < 0)
+        {
+            ESP_LOGE(TAG, "Receiving message failed: errno %d", errno);
+            if (accepted_error_count-- > 0)
+            {
+                ESP_LOGE(TAG, "Tries left: %d", accepted_error_count);
+                continue;
+            }
+            else
+            {
+                ESP_LOGE(TAG, "Accepted error count reached. Message will not be received");
+                return ESP_FAIL;
+            }
+        }
+        else if (len == 0)
+        {
+            ESP_LOGE(TAG, "Sender side closed connection");
+            return ESP_FAIL;
+        }
+        else
+        {
+            received_bytes += len;
+            rx_buffer += len;
+        }
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t receive_block(int sock, char *rx_buffer, int rx_buffer_len, int *received, struct timeval *timeout)
 {
     *received = 0;
-
-    struct sockaddr_storage source_addr;
-    socklen_t socklen = sizeof(source_addr);
 
     fd_set readfds;
     FD_ZERO(&readfds);
     FD_SET(sock, &readfds);
 
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 0;
-
-    int ret = select(sock + 1, &readfds, NULL, NULL, &timeout);
+    int ret = select(sock + 1, &readfds, NULL, NULL, timeout);
     if (ret > 0 && FD_ISSET(sock, &readfds)) {
-        *received = recvfrom(sock, rx_buffer, rx_buffer_len, 0, (struct sockaddr *)&source_addr, &socklen);
+        *received = recv(sock, rx_buffer, rx_buffer_len, 0);
+        if (*received < 0)
+        {
+            ESP_LOGE(TAG, "Receive no block error occured");
+            return ESP_FAIL;
+        }
         return ESP_OK;
     } else if (ret == 0) {
         return ESP_OK;
     } else {
-        ESP_LOGE(TAG, "Unknown error occured when read without blocking");
+        ESP_LOGE(TAG, "Select failed");
         return ESP_FAIL;
     }
 }
 
-esp_err_t espfsp_tcp_accept(int *listen_sock, int *sock, struct sockaddr_in *source_addr, socklen_t *addr_len)
+static esp_err_t receive_from_block(int sock,
+    char *rx_buffer,
+    int rx_buffer_len,
+    int *received,
+    struct timeval *timeout,
+    struct sockaddr_in *source_addr,
+    socklen_t *addr_len)
+{
+    *received = 0;
+
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(sock, &readfds);
+
+    int ret = select(sock + 1, &readfds, NULL, NULL, timeout);
+    if (ret > 0 && FD_ISSET(sock, &readfds)) {
+        *received = recvfrom(sock, rx_buffer, rx_buffer_len, 0, (struct sockaddr *)source_addr, addr_len);
+        if (*received < 0)
+        {
+            ESP_LOGE(TAG, "Receive no block error occured");
+            return ESP_FAIL;
+        }
+        return ESP_OK;
+    } else if (ret == 0) {
+        return ESP_OK;
+    } else {
+        ESP_LOGE(TAG, "Select failed");
+        return ESP_FAIL;
+    }
+}
+
+esp_err_t espfsp_receive_block(int sock, char *rx_buffer, int rx_buffer_len, int *received, struct timeval *timeout)
+{
+    return receive_block(sock, rx_buffer, rx_buffer_len, received, timeout);
+}
+
+esp_err_t espfsp_receive_from_block(
+    int sock,
+    char *rx_buffer,
+    int rx_buffer_len,
+    int *received,
+    struct timeval *timeout,
+    struct sockaddr_in *source_addr,
+    socklen_t *addr_len)
+{
+    return receive_from_block(sock, rx_buffer, rx_buffer_len, received, timeout, source_addr, addr_len);
+}
+
+esp_err_t espfsp_receive_no_block(int sock, char *rx_buffer, int rx_buffer_len, int *received)
+{
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+
+    return receive_block(sock, rx_buffer, rx_buffer_len, received, &timeout);
+}
+
+esp_err_t espfsp_receive_from_no_block(
+    int sock, char *rx_buffer, int rx_buffer_len, int *received, struct sockaddr_in *source_addr, socklen_t *addr_len)
+{
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+
+    return receive_from_block(sock, rx_buffer, rx_buffer_len, received, &timeout, source_addr, addr_len);
+}
+
+esp_err_t espfsp_connect(int sock, struct sockaddr_in *source_addr)
+{
+    esp_err_t ret = ESP_OK;
+
+    ret = connect(sock, (struct sockaddr *) source_addr, sizeof(struct sockaddr_in));
+    if (ret != 0)
+    {
+        ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_tcp_accept(int listen_sock, int *sock, struct sockaddr_in *source_addr, socklen_t *addr_len)
 {
     int keep_alive = 1;
     char addr_str[128];
 
-    *sock = accept(*listen_sock, (struct sockaddr *)source_addr, addr_len);
+    *sock = accept(listen_sock, (struct sockaddr *) source_addr, addr_len);
     if (*sock < 0)
     {
         ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
