@@ -7,7 +7,7 @@
 #include <stddef.h>
 
 #include "esp_timer.h"
-#include "esp_netif.h"
+#include "lwip/sockets.h"
 
 #include "espfsp_sock_op.h"
 #include "data_proto/espfsp_data_proto.h"

@@ -3,14 +3,13 @@
  * Author: Maksymilian Komarnicki
  */
 
-#include <string.h>
-#include <errno.h>
-
 #include <esp_err.h>
 #include <esp_log.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "lwip/sockets.h"
 
 #include "espfsp_sock_op.h"
 #include "espfsp_server.h"

@@ -9,6 +9,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "lwip/sockets.h"
+
 #include "espfsp_sock_op.h"
 #include "espfsp_server.h"
 #include "server/espfsp_data_task.h"

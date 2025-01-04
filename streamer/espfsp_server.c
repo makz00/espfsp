@@ -13,7 +13,6 @@
 #include "freertos/task.h"
 
 #include "espfsp_server.h"
-#include "espfsp_message_defs.h"
 #include "espfsp_message_buffer.h"
 #include "server/espfsp_state_def.h"
 #include "server/espfsp_comm_proto_conf.h"
