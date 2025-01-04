@@ -20,19 +20,13 @@
 
 static const char *TAG = "ESPFSP_SERVER_CLIENT_PUSH_DATA_TASK";
 
-// static void punch_hole_in_nat(int sock)
-// {
-//     uint8_t bullet = 0;
-//     while (sendto(sock, &bullet, sizeof(bullet), 0, (struct sockaddr *)dest_addr, sizeof(*dest_addr)) > 0) {}
-// }
-
 static void process_receiver_connection(int sock, espfsp_server_instance_t *instance)
 {
     char rx_buffer[sizeof(espfsp_message_t)];
 
     while (1)
     {
-        esp_err_t ret = espfsp_receive(sock, rx_buffer, sizeof(espfsp_message_t));
+        esp_err_t ret = espfsp_receive_bytes(sock, rx_buffer, sizeof(espfsp_message_t));
         if (ret == ESP_OK)
         {
             // ESP_LOGI(

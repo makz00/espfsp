@@ -15,38 +15,39 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "espfsp_server.h"
 #include "espfsp_sock_op.h"
-#include "server/espfsp_client_play_session_and_control_task.h"
+#include "espfsp_server.h"
+#include "server/espfsp_session_and_control_task.h"
 #include "server/espfsp_state_def.h"
 #include "comm_proto/espfsp_comm_proto.h"
 
-static const char *TAG = "ESPFSP_SERVER_CLIENT_PLAY_SESSION_AND_CONTROL_TASK";
+static const char *TAG = "ESPFSP_SERVER_SESSION_AND_CONTROL_TASK";
 
-static void handle_new_client_play_connection(espfsp_server_instance_t *instance, int sock)
+static void handle_new_connection(espfsp_session_and_control_task_data_t *data, int sock)
 {
-    // Spawn ping task
-    espfsp_comm_proto_run(&instance->client_play_comm_proto, sock);
+    espfsp_comm_proto_t *comm_proto = data->comm_proto;
+    free(data);
+
+    espfsp_comm_proto_run(comm_proto, sock);
 }
 
-void espfsp_server_client_play_session_and_control_task(void *pvParameters)
+void espfsp_session_and_control_task(void *pvParameters)
 {
-    const espfsp_server_instance_t *instance = (espfsp_server_instance_t *) pvParameters;
-    const espfsp_server_config_t *config = instance->config;
+    espfsp_session_and_control_task_data_t *data = (espfsp_session_and_control_task_data_t *) pvParameters;
 
     while (1)
     {
         esp_err_t ret = ESP_OK;
         int listen_sock = 0;
 
-        ret = espfsp_create_tcp_server(&listen_sock, config->client_play_local.control_port);
+        ret = espfsp_create_tcp_server(&listen_sock, data->port);
         if (ret != ESP_OK)
         {
             ESP_LOGE(TAG, "Create TCP server failed");
             continue;
         }
 
-        ESP_LOGI(TAG, "Start processing connections");
+        ESP_LOGI(TAG, "Process incoming connections");
 
         while (1)
         {
@@ -54,16 +55,16 @@ void espfsp_server_client_play_session_and_control_task(void *pvParameters)
             struct sockaddr_in source_addr;
             socklen_t addr_len = sizeof(source_addr);
 
-            ret = espfsp_tcp_accept(&listen_sock, &sock, &source_addr, &addr_len);
+            ret = espfsp_tcp_accept(listen_sock, &sock, &source_addr, &addr_len);
             if (ret != ESP_OK)
             {
                 ESP_LOGE(TAG, "Accept TCP connection failed");
                 continue;
             }
 
-            ESP_LOGI(TAG, "Start processing messages");
+            ESP_LOGI(TAG, "Processing connection");
 
-            handle_new_client_play_connection(instance, sock);
+            handle_new_connection(data, sock);
 
             ESP_LOGE(TAG, "Shut down socket and restart...");
 

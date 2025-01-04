@@ -18,8 +18,7 @@
 #include "comm_proto/espfsp_comm_proto.h"
 #include "server/espfsp_state_def.h"
 #include "server/espfsp_comm_proto_handlers.h"
-#include "server/espfsp_client_play_session_and_control_task.h"
-#include "server/espfsp_client_push_session_and_control_task.h"
+#include "server/espfsp_session_and_control_task.h"
 
 static const char *TAG = "ESPFSP_SERVER";
 
@@ -119,17 +118,30 @@ static esp_err_t start_client_push_session_and_control_task(espfsp_server_instan
 {
     BaseType_t xStatus;
 
+    espfsp_session_and_control_task_data_t *data = (espfsp_session_and_control_task_data_t *) malloc(
+        sizeof(espfsp_session_and_control_task_data_t));
+
+    if (data == NULL)
+    {
+        ESP_LOGE(TAG, "Cannot allocate memory for session and control task data");
+        return ESP_FAIL;
+    }
+
+    data->comm_proto = &instance->client_push_comm_proto;
+    data->port = instance->config->client_push_local.control_port;
+
     xStatus = xTaskCreate(
-        espfsp_server_client_push_session_and_control_task,
+        espfsp_session_and_control_task,
         "espfsp_server_client_push_session_and_control_task",
         instance->config->client_push_session_and_control_task_info.stack_size,
-        NULL,
+        (void *) data,
         instance->config->client_push_session_and_control_task_info.task_prio,
         &instance->client_push_handlers[0].session_and_control_task_handle);
 
     if (xStatus != pdPASS)
     {
         ESP_LOGE(TAG, "Could not start receiver task!");
+        free(data);
         return ESP_FAIL;
     }
 
@@ -140,17 +152,30 @@ static esp_err_t start_client_play_session_and_control_task(espfsp_server_instan
 {
     BaseType_t xStatus;
 
+    espfsp_session_and_control_task_data_t *data = (espfsp_session_and_control_task_data_t *) malloc(
+        sizeof(espfsp_session_and_control_task_data_t));
+
+    if (data == NULL)
+    {
+        ESP_LOGE(TAG, "Cannot allocate memory for session and control task data");
+        return ESP_FAIL;
+    }
+
+    data->comm_proto = &instance->client_play_comm_proto;
+    data->port = instance->config->client_play_local.control_port;
+
     xStatus = xTaskCreate(
-        espfsp_server_client_play_session_and_control_task,
+        espfsp_session_and_control_task,
         "espfsp_server_client_play_session_and_control_task",
         instance->config->client_play_session_and_control_task_info.stack_size,
-        NULL,
+        (void *) data,
         instance->config->client_play_session_and_control_task_info.task_prio,
         &instance->client_play_handlers[0].session_and_control_task_handle);
 
     if (xStatus != pdPASS)
     {
         ESP_LOGE(TAG, "Could not start receiver task!");
+        free(data);
         return ESP_FAIL;
     }
 

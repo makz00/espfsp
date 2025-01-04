@@ -110,7 +110,6 @@ static esp_err_t execute_local_action(espfsp_comm_proto_t *comm_proto, int sock,
     ret = espfsp_send(sock, &comm_proto->tlv_buffer, sizeof(espfsp_comm_proto_tlv_t));
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Send communicate failed");
         return ret;
     }
 
@@ -251,6 +250,8 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
             break;
         }
     }
+
+    return ESP_OK;
 }
 
 esp_err_t espfsp_comm_proto_stop(espfsp_comm_proto_t *comm_proto)

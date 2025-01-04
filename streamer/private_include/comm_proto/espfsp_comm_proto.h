@@ -38,19 +38,13 @@ typedef struct {
 } espfsp_comm_proto_tlv_t;
 
 typedef struct {
-    espfsp_comm_proto_config_t *config;
-    espfsp_comm_proto_state_t state;
-    QueueHandle_t reqActionQueue;
-    espfsp_comm_proto_tlv_t tlv_buffer;
-    uint8_t en;
-} espfsp_comm_proto_t;
-
-typedef struct {
     espfsp_comm_proto_msg_type_t type;
     uint8_t subtype;
     uint16_t length;
     uint8_t *data;
 } espfsp_comm_proto_action_t;
+
+typedef struct espfsp_comm_proto_t espfsp_comm_proto_t;
 
 // msg_content parameter is structure representing message type
 // This kind of structures definitions are in *_resp.h and in *_req.h
@@ -67,6 +61,14 @@ typedef struct {
     void *callback_ctx;
     int buffered_actions;
 } espfsp_comm_proto_config_t;
+
+struct espfsp_comm_proto_t {
+    espfsp_comm_proto_config_t *config;
+    espfsp_comm_proto_state_t state;
+    QueueHandle_t reqActionQueue;
+    espfsp_comm_proto_tlv_t tlv_buffer;
+    uint8_t en;
+};
 
 esp_err_t espfsp_comm_proto_init(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_config_t *config);
 esp_err_t espfsp_comm_proto_deinit(espfsp_comm_proto_t *comm_proto);

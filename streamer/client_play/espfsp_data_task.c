@@ -39,7 +39,7 @@ static void process_receiver_connection(int sock, espfsp_client_play_instance_t 
     {
         punch_hole_in_nat(sock);
 
-        int ret = espfsp_receive(sock, rx_buffer, sizeof(espfsp_message_t));
+        int ret = espfsp_receive_bytes(sock, rx_buffer, sizeof(espfsp_message_t));
         if (ret > 0)
         {
             // ESP_LOGI(

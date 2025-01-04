@@ -16,9 +16,8 @@ set(srcs
     streamer/client_push/espfsp_session_and_control_task.c
 
     streamer/server/espfsp_client_play_data_task.c
-    streamer/server/espfsp_client_play_session_and_control_task.c
     streamer/server/espfsp_client_push_data_task.c
-    streamer/server/espfsp_client_push_session_and_control_task.c
+    streamer/server/espfsp_session_and_control_task.c
     streamer/server/espfsp_comm_proto_handlers.c
 )
 
