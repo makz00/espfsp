@@ -166,13 +166,13 @@ static esp_err_t remove_client_play(espfsp_client_play_instance_t *instance)
     ret = espfsp_client_play_data_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        return NULL;
+        return ret;
     }
 
     ret = espfsp_client_play_comm_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        return NULL;
+        return ret;
     }
 
     ret = espfsp_message_buffer_deinit(&instance->receiver_buffer);

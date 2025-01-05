@@ -160,13 +160,13 @@ static esp_err_t remove_client_push(espfsp_client_push_instance_t *instance)
     ret = espfsp_client_push_data_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        return NULL;
+        return ret;
     }
 
     ret = espfsp_client_push_comm_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        return NULL;
+        return ret;
     }
 
     free(instance->sender_frame.buf);

@@ -3,6 +3,11 @@
  * Author: Maksymilian Komarnicki
  */
 
+#include "string.h"
+
+#include "esp_err.h"
+#include "esp_log.h"
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -14,8 +19,6 @@ static const char *TAG = "ESPFSP_DATA_PROTOCOL";
 
 esp_err_t espfsp_data_proto_init(espfsp_data_proto_t *data_proto, espfsp_data_proto_config_t *config)
 {
-    esp_err_t ret = ESP_OK;
-
     data_proto->config = (espfsp_data_proto_config_t *) malloc(sizeof(espfsp_data_proto_config_t));
     if (!data_proto->config)
     {
@@ -24,6 +27,7 @@ esp_err_t espfsp_data_proto_init(espfsp_data_proto_t *data_proto, espfsp_data_pr
     }
 
     memcpy(data_proto->config, config, sizeof(espfsp_data_proto_config_t));
+    return ESP_OK;
 }
 
 esp_err_t espfsp_data_proto_deinit(espfsp_data_proto_t *data_proto)

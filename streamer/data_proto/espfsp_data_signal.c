@@ -3,6 +3,9 @@
  * Author: Maksymilian Komarnicki
  */
 
+#include "esp_err.h"
+#include "esp_log.h"
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -40,14 +43,14 @@ static bool should_signal_be_handled(espfsp_data_proto_t *data_proto, uint64_t c
            (current_time - data_proto->last_traffic) >= MAX_TIME_US_NO_NAT_TRAVERSAL;
 }
 
-esp_err_t handle_incoming_signal(espfsp_data_proto_t *data_proto, int sock)
+esp_err_t espfsp_data_proto_handle_incoming_signal(espfsp_data_proto_t *data_proto, int sock)
 {
     esp_err_t ret = ESP_OK;
     uint64_t current_time = esp_timer_get_time();
     uint8_t received_signal = SIGNAL_VAL_NOK;
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_UNSPEC;
-    socklen_t addr_len = size(addr);
+    socklen_t addr_len = sizeof(addr);
 
     if (should_signal_be_handled(data_proto, current_time))
     {
@@ -72,7 +75,7 @@ esp_err_t handle_incoming_signal(espfsp_data_proto_t *data_proto, int sock)
     return ret;
 }
 
-esp_err_t handle_outcoming_signal(espfsp_data_proto_t *data_proto, int sock)
+esp_err_t espfsp_data_proto_handle_outcoming_signal(espfsp_data_proto_t *data_proto, int sock)
 {
     esp_err_t ret = ESP_OK;
     uint64_t current_time = esp_timer_get_time();

@@ -18,7 +18,6 @@ static const char *TAG = "CLIENT_PUSH_COMMUNICATION_PROTOCOL_HANDLERS";
 
 esp_err_t espfsp_client_push_req_session_terminate_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
-    esp_err_t ret = ESP_OK;
     espfsp_comm_proto_req_session_terminate_message_t *msg = (espfsp_comm_proto_req_session_terminate_message_t *) msg_content;
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
 
@@ -27,7 +26,7 @@ esp_err_t espfsp_client_push_req_session_terminate_handler(espfsp_comm_proto_t *
         instance->session_data.val = false;
     }
 
-    return ret;
+    return ESP_OK;
 }
 
 static esp_err_t start_client_push_data_task(espfsp_client_push_instance_t * instance)
@@ -71,10 +70,10 @@ static esp_err_t start_client_push_data_task(espfsp_client_push_instance_t * ins
 esp_err_t espfsp_client_push_req_start_stream_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
     esp_err_t ret = ESP_OK;
-    espfsp_comm_proto_req_start_stream_message_t *msg = (espfsp_comm_proto_req_start_stream_message_t *) msg_content;
+    espfsp_comm_proto_req_start_stream_message_t *received_msg = (espfsp_comm_proto_req_start_stream_message_t *) msg_content;
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
 
-    if (!instance->session_data.val || instance->session_data.session_id != msg->session_id)
+    if (!instance->session_data.val || instance->session_data.session_id != received_msg->session_id)
     {
         ESP_LOGE(TAG, "No session created OR session id does not match");
         return ESP_OK;
@@ -83,11 +82,11 @@ esp_err_t espfsp_client_push_req_start_stream_handler(espfsp_comm_proto_t *comm_
     ret = instance->config->cb.start_cam(&instance->config->cam_config, &instance->config->frame_config);
     if (ret != ESP_OK)
     {
-        espfsp_comm_proto_req_session_terminate_message_t msg = {
-            .session_id = msg.session_id,
+        espfsp_comm_proto_req_session_terminate_message_t send_msg = {
+            .session_id = received_msg->session_id,
         };
 
-        return espfsp_comm_proto_session_terminate(comm_proto, &msg);
+        return espfsp_comm_proto_session_terminate(comm_proto, &send_msg);
     }
 
     return start_client_push_data_task(instance);
@@ -96,10 +95,10 @@ esp_err_t espfsp_client_push_req_start_stream_handler(espfsp_comm_proto_t *comm_
 esp_err_t espfsp_client_push_req_stop_stream_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
     esp_err_t ret = ESP_OK;
-    espfsp_comm_proto_req_stop_stream_message_t *msg = (espfsp_comm_proto_req_stop_stream_message_t *) msg_content;
+    espfsp_comm_proto_req_stop_stream_message_t *received_msg = (espfsp_comm_proto_req_stop_stream_message_t *) msg_content;
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
 
-    if (!instance->session_data.val || instance->session_data.session_id != msg->session_id)
+    if (!instance->session_data.val || instance->session_data.session_id != received_msg->session_id)
     {
         ESP_LOGE(TAG, "No session created OR session id does not match");
         return ESP_OK;
@@ -114,11 +113,11 @@ esp_err_t espfsp_client_push_req_stop_stream_handler(espfsp_comm_proto_t *comm_p
     ret = instance->config->cb.stop_cam();
     if (ret != ESP_OK)
     {
-        espfsp_comm_proto_req_session_terminate_message_t msg = {
-            .session_id = msg.session_id,
+        espfsp_comm_proto_req_session_terminate_message_t send_msg = {
+            .session_id = received_msg->session_id,
         };
 
-        return espfsp_comm_proto_session_terminate(comm_proto, &msg);
+        return espfsp_comm_proto_session_terminate(comm_proto, &send_msg);
     }
 
     return ret;

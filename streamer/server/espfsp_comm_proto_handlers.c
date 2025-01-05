@@ -18,7 +18,6 @@ static const char *TAG = "SERVER_COMMUNICATION_PROTOCOL_HANDLERS";
 
 esp_err_t espfsp_server_req_session_init_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
-    esp_err_t ret = ESP_OK;
     espfsp_comm_proto_req_session_init_message_t *msg = (espfsp_comm_proto_req_session_init_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
 
@@ -69,7 +68,6 @@ esp_err_t espfsp_server_req_session_init_handler(espfsp_comm_proto_t *comm_proto
 
 esp_err_t espfsp_server_req_session_terminate_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
-    esp_err_t ret = ESP_OK;
     espfsp_comm_proto_req_session_terminate_message_t *msg = (espfsp_comm_proto_req_session_terminate_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
 
@@ -83,7 +81,7 @@ esp_err_t espfsp_server_req_session_terminate_handler(espfsp_comm_proto_t *comm_
         free(instance->client_play_session_data[0]);
     }
 
-    return ret;
+    return ESP_OK;
 }
 
 static esp_err_t start_client_push_data_task(espfsp_server_instance_t * instance)
@@ -177,10 +175,10 @@ static esp_err_t start_stream_tasks(espfsp_server_instance_t *instance)
 esp_err_t espfsp_server_req_start_stream_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
     esp_err_t ret = ESP_OK;
-    espfsp_comm_proto_req_start_stream_message_t *msg = (espfsp_comm_proto_req_start_stream_message_t *) msg_content;
+    espfsp_comm_proto_req_start_stream_message_t *received_msg = (espfsp_comm_proto_req_start_stream_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
 
-    if (instance->client_play_session_data[0] == NULL || instance->client_play_session_data[0]->session_id != msg->session_id)
+    if (instance->client_play_session_data[0] == NULL || instance->client_play_session_data[0]->session_id != received_msg->session_id)
     {
         return ESP_OK;
     }
@@ -190,11 +188,11 @@ esp_err_t espfsp_server_req_start_stream_handler(espfsp_comm_proto_t *comm_proto
         return ESP_OK;
     }
 
-    espfsp_comm_proto_req_start_stream_message_t msg = {
+    espfsp_comm_proto_req_start_stream_message_t send_msg = {
         .session_id = instance->client_push_session_data[0]->session_id,
     };
 
-    ret = espfsp_comm_proto_start_stream(&instance->client_push_comm_proto, &msg);
+    ret = espfsp_comm_proto_start_stream(&instance->client_push_comm_proto, &send_msg);
     if (ret != ESP_OK)
     {
         return ret;
@@ -219,24 +217,24 @@ static esp_err_t stop_stream_tasks(espfsp_server_instance_t *instance)
 esp_err_t espfsp_server_req_stop_stream_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
     esp_err_t ret = ESP_OK;
-    espfsp_comm_proto_req_stop_stream_message_t *msg = (espfsp_comm_proto_req_stop_stream_message_t *) msg_content;
+    espfsp_comm_proto_req_stop_stream_message_t *received_msg = (espfsp_comm_proto_req_stop_stream_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
 
-    if (instance->client_play_session_data[0] == NULL || instance->client_play_session_data[0]->session_id != msg->session_id)
+    if (instance->client_play_session_data[0] == NULL || instance->client_play_session_data[0]->session_id != received_msg->session_id)
     {
         return ESP_OK;
     }
 
-    if (instance->client_push_session_data[0] = NULL)
+    if (instance->client_push_session_data[0] == NULL)
     {
         return ESP_OK;
     }
 
-    espfsp_comm_proto_req_stop_stream_message_t msg = {
+    espfsp_comm_proto_req_stop_stream_message_t send_msg = {
         .session_id = instance->client_push_session_data[0]->session_id,
     };
 
-    ret = espfsp_comm_proto_stop_stream(&instance->client_push_comm_proto, &msg);
+    ret = espfsp_comm_proto_stop_stream(&instance->client_push_comm_proto, &send_msg);
     if (ret != ESP_OK)
     {
         return ret;

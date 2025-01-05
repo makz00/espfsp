@@ -3,6 +3,9 @@
  * Author: Maksymilian Komarnicki
  */
 
+#include "esp_err.h"
+#include "esp_log.h"
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -107,7 +110,7 @@ static esp_err_t execute_local_action(espfsp_comm_proto_t *comm_proto, int sock,
 
     memcpy(comm_proto->tlv_buffer.value, action->data, action->length);
 
-    ret = espfsp_send(sock, &comm_proto->tlv_buffer, sizeof(espfsp_comm_proto_tlv_t));
+    ret = espfsp_send(sock, (char *) &comm_proto->tlv_buffer, sizeof(espfsp_comm_proto_tlv_t));
     if (ret != ESP_OK)
     {
         return ret;
@@ -188,7 +191,8 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
     comm_proto->state = ESPFSP_COMM_PROTO_STATE_LISTEN;
     comm_proto->en = 1;
 
-    int64_t reptv_last_called, reptv_now_called = esp_timer_get_time();
+    int64_t reptv_last_called = esp_timer_get_time();
+    int64_t reptv_now_called = reptv_last_called;
 
     while (comm_proto->en)
     {

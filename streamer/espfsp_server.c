@@ -226,13 +226,13 @@ static esp_err_t remove_server(espfsp_server_instance_t *instance)
     ret = espfsp_server_data_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        return NULL;
+        return ret;
     }
 
     ret = espfsp_server_comm_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        return NULL;
+        return ret;
     }
 
     ret = espfsp_message_buffer_deinit(&instance->receiver_buffer);

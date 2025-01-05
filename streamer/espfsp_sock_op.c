@@ -35,12 +35,12 @@ void espfsp_set_local_addr(struct sockaddr_in *addr, int port)
     addr->sin_port = htons(port);
 }
 
-static int send_all_to(int sock, u_int8_t *buffer, size_t n, struct sockaddr *dest_addr)
+static int send_all_to(int sock, u_int8_t *buffer, size_t n, struct sockaddr_in *dest_addr)
 {
     size_t n_left = n;
     while (n_left > 0)
     {
-        ssize_t bytes_sent = sendto(sock, buffer, n_left, 0, dest_addr, sizeof(*dest_addr));
+        ssize_t bytes_sent = sendto(sock, buffer, n_left, 0, (struct sockaddr *) dest_addr, sizeof(*dest_addr));
         if (bytes_sent < 0)
         {
             if (errno == ENOMEM)
@@ -134,7 +134,7 @@ esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr_in 
         message.msg_len = bytes_to_send;
         memcpy(message.buf, fb->buf + i, bytes_to_send);
 
-        int err = send_all_to(sock, (u_int8_t *)&message, sizeof(espfsp_message_t), (struct sockaddr *) dest_addr);
+        int err = send_all_to(sock, (u_int8_t *)&message, sizeof(espfsp_message_t), dest_addr);
         if (err < 0)
         {
             ESP_LOGE(TAG, "Error occurred during sending FB to: errno %d", errno);

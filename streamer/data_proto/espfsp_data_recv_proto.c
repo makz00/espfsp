@@ -3,6 +3,9 @@
  * Author: Maksymilian Komarnicki
  */
 
+#include "esp_err.h"
+#include "esp_log.h"
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -15,7 +18,7 @@
 
 static const char *TAG = "ESPFSP_DATA_RECIVE_PROTOCOL";
 
-static esp_err_t recv(espfsp_data_proto_t *data_proto, int sock)
+static esp_err_t recv_msg(espfsp_data_proto_t *data_proto, int sock)
 {
     esp_err_t ret = ESP_OK;
     char rx_buffer[sizeof(espfsp_message_t)];
@@ -57,7 +60,9 @@ esp_err_t espfsp_data_proto_handle_recv(espfsp_data_proto_t *data_proto, int soc
         ret = espfsp_data_proto_handle_outcoming_signal(data_proto, sock);
         if (ret != ESP_OK)
             return ret;
+
+    default:
     }
 
-    return recv(data_proto, sock);
+    return recv_msg(data_proto, sock);
 }
