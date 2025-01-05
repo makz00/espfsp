@@ -22,9 +22,9 @@ esp_err_t espfsp_client_push_req_session_terminate_handler(espfsp_comm_proto_t *
     espfsp_comm_proto_req_session_terminate_message_t *msg = (espfsp_comm_proto_req_session_terminate_message_t *) msg_content;
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
 
-    if (instance->session_data != NULL && instance->session_data->session_id == msg->session_id)
+    if (instance->session_data.val && instance->session_data.session_id == msg->session_id)
     {
-        free(instance->session_data);
+        instance->session_data.val = false;
     }
 
     return ret;
@@ -74,7 +74,7 @@ esp_err_t espfsp_client_push_req_start_stream_handler(espfsp_comm_proto_t *comm_
     espfsp_comm_proto_req_start_stream_message_t *msg = (espfsp_comm_proto_req_start_stream_message_t *) msg_content;
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
 
-    if (instance->session_data == NULL || instance->session_data->session_id != msg->session_id)
+    if (!instance->session_data.val || instance->session_data.session_id != msg->session_id)
     {
         ESP_LOGE(TAG, "No session created OR session id does not match");
         return ESP_OK;
@@ -99,7 +99,7 @@ esp_err_t espfsp_client_push_req_stop_stream_handler(espfsp_comm_proto_t *comm_p
     espfsp_comm_proto_req_stop_stream_message_t *msg = (espfsp_comm_proto_req_stop_stream_message_t *) msg_content;
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
 
-    if (instance->session_data == NULL || instance->session_data->session_id != msg->session_id)
+    if (!instance->session_data.val || instance->session_data.session_id != msg->session_id)
     {
         ESP_LOGE(TAG, "No session created OR session id does not match");
         return ESP_OK;
@@ -130,19 +130,14 @@ esp_err_t espfsp_client_push_resp_session_ack_handler(espfsp_comm_proto_t *comm_
     espfsp_comm_proto_resp_session_ack_message_t *msg = (espfsp_comm_proto_resp_session_ack_message_t *) msg_content;
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
 
-    if (instance->session_data != NULL)
+    if (instance->session_data.val)
     {
         ESP_LOGE(TAG, "Cannot handle new session ack. There is already one session");
         return ESP_FAIL;
     }
 
-    instance->session_data = (espfsp_client_push_session_data_t *) malloc(sizeof(espfsp_client_push_session_data_t));
-    if (instance->session_data == NULL)
-    {
-        ESP_LOGE(TAG, "Cannot allocate memory for new session");
-        return ESP_FAIL;
-    }
+    instance->session_data.val = true;
+    instance->session_data.session_id = msg->session_id;
 
-    instance->session_data->session_id = msg->session_id;
     return ret;
 }

@@ -27,8 +27,8 @@ static esp_err_t start_client_push_session_and_control_task(espfsp_server_instan
 {
     BaseType_t xStatus;
 
-    espfsp_session_and_control_task_data_t *data = (espfsp_session_and_control_task_data_t *) malloc(
-        sizeof(espfsp_session_and_control_task_data_t));
+    espfsp_server_session_and_control_task_data_t *data = (espfsp_server_session_and_control_task_data_t *) malloc(
+        sizeof(espfsp_server_session_and_control_task_data_t));
 
     if (data == NULL)
     {
@@ -61,8 +61,8 @@ static esp_err_t start_client_play_session_and_control_task(espfsp_server_instan
 {
     BaseType_t xStatus;
 
-    espfsp_session_and_control_task_data_t *data = (espfsp_session_and_control_task_data_t *) malloc(
-        sizeof(espfsp_session_and_control_task_data_t));
+    espfsp_server_session_and_control_task_data_t *data = (espfsp_server_session_and_control_task_data_t *) malloc(
+        sizeof(espfsp_server_session_and_control_task_data_t));
 
     if (data == NULL)
     {

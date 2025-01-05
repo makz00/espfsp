@@ -17,7 +17,7 @@
 
 static const char *TAG = "ESPFSP_SERVER_SESSION_AND_CONTROL_TASK";
 
-static void handle_new_connection(espfsp_session_and_control_task_data_t *data, int sock)
+static void handle_new_connection(espfsp_server_session_and_control_task_data_t *data, int sock)
 {
     espfsp_comm_proto_t *comm_proto = data->comm_proto;
 
@@ -26,7 +26,7 @@ static void handle_new_connection(espfsp_session_and_control_task_data_t *data, 
 
 void espfsp_server_session_and_control_task(void *pvParameters)
 {
-    espfsp_session_and_control_task_data_t *data = (espfsp_session_and_control_task_data_t *) pvParameters;
+    espfsp_server_session_and_control_task_data_t *data = (espfsp_server_session_and_control_task_data_t *) pvParameters;
 
     while (1)
     {

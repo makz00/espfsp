@@ -16,6 +16,7 @@
 #define CONFIG_ESPFSP_CLIENT_PUSH_MAX_INSTANCES 1
 
 typedef struct {
+    bool val;
     int session_id;
 } espfsp_client_push_session_data_t;
 
@@ -30,7 +31,7 @@ typedef struct
     espfsp_comm_proto_t comm_proto;
     espfsp_data_proto_t data_proto;
 
-    espfsp_client_push_session_data_t *session_data;
+    espfsp_client_push_session_data_t session_data;
 } espfsp_client_push_instance_t;
 
 typedef struct

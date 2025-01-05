@@ -87,6 +87,8 @@ static espfsp_client_push_instance_t *create_new_client_push(const espfsp_client
 
     memcpy(instance->config, config, sizeof(espfsp_client_push_config_t));
 
+    instance->session_data.val = false;
+
     esp_err_t err = ESP_OK;
 
     instance->sender_frame.buf = (char *) malloc(config->frame_config.frame_max_len);
@@ -111,7 +113,7 @@ static espfsp_client_push_instance_t *create_new_client_push(const espfsp_client
     err = start_session_and_control_task(instance);
     if (err != ESP_OK)
     {
-        return err;
+        return NULL;
     }
 
     return instance;

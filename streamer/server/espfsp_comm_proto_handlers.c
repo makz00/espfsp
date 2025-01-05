@@ -90,8 +90,8 @@ static esp_err_t start_client_push_data_task(espfsp_server_instance_t * instance
 {
     BaseType_t xStatus;
 
-    espfsp_data_task_data_t *data = (espfsp_data_task_data_t *) malloc(
-        sizeof(espfsp_data_task_data_t));
+    espfsp_server_data_task_data_t *data = (espfsp_server_data_task_data_t *) malloc(
+        sizeof(espfsp_server_data_task_data_t));
 
     if (data == NULL)
     {
@@ -126,8 +126,8 @@ static esp_err_t start_client_play_data_task(espfsp_server_instance_t * instance
 {
     BaseType_t xStatus;
 
-    espfsp_data_task_data_t *data = (espfsp_data_task_data_t *) malloc(
-        sizeof(espfsp_data_task_data_t));
+    espfsp_server_data_task_data_t *data = (espfsp_server_data_task_data_t *) malloc(
+        sizeof(espfsp_server_data_task_data_t));
 
     if (data == NULL)
     {
