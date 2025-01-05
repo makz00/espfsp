@@ -17,6 +17,14 @@ set(srcs
     streamer/client_common/espfsp_data_task.c
     streamer/client_common/espfsp_session_and_control_task.c
 
+    streamer/client_play/espfsp_comm_proto_conf.c
+    streamer/client_play/espfsp_comm_proto_handlers.c
+    streamer/client_play/espfsp_data_proto_conf.c
+
+    streamer/client_push/espfsp_comm_proto_conf.c
+    streamer/client_push/espfsp_comm_proto_handlers.c
+    streamer/client_push/espfsp_data_proto_conf.c
+
     streamer/server/espfsp_comm_proto_conf.c
     streamer/server/espfsp_comm_proto_handlers.c
     streamer/server/espfsp_data_proto_conf.c
