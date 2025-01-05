@@ -22,6 +22,8 @@ static esp_err_t get_last_signal(int sock, uint8_t *signal, struct sockaddr_in *
     if (ret != ESP_OK)
         return ret;
 
+    // With high probability, the lates receied packate will be the last one that went through NAT, so NAT mapping
+    // for this last packet should be kept in NAT with high probability
     do
     {
         ret = espfsp_receive_from_no_block(sock, (char *) signal, sizeof(uint8_t), &received_bytes, addr, addr_len);

@@ -12,9 +12,7 @@
 #include "lwip/sockets.h"
 
 #include "espfsp_sock_op.h"
-#include "espfsp_server.h"
 #include "server/espfsp_session_and_control_task.h"
-#include "server/espfsp_state_def.h"
 #include "comm_proto/espfsp_comm_proto.h"
 
 static const char *TAG = "ESPFSP_SERVER_SESSION_AND_CONTROL_TASK";
@@ -26,7 +24,7 @@ static void handle_new_connection(espfsp_session_and_control_task_data_t *data, 
     espfsp_comm_proto_run(comm_proto, sock);
 }
 
-void espfsp_session_and_control_task(void *pvParameters)
+void espfsp_server_session_and_control_task(void *pvParameters)
 {
     espfsp_session_and_control_task_data_t *data = (espfsp_session_and_control_task_data_t *) pvParameters;
 

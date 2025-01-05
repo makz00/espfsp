@@ -38,52 +38,38 @@ esp_err_t espfsp_server_data_protos_init(espfsp_server_instance_t *instance)
     esp_err_t ret = ESP_OK;
     espfsp_data_proto_config_t config;
 
-    config.type = ESPFSP_DATA_PROTO_TYPE_RECV,
-    config.mode = ESPFSP_DATA_PROTO_MODE_LOCAL,
-    config.recv_buffer = &instance->receiver_buffer,
-    config.send_fb = NULL,
-    config.send_frame_callback = NULL,
-    config.send_frame_ctx = NULL,
+    config.type = ESPFSP_DATA_PROTO_TYPE_RECV;
+    config.mode = ESPFSP_DATA_PROTO_MODE_LOCAL;
+    config.recv_buffer = &instance->receiver_buffer;
+    config.send_fb = NULL;
+    config.send_frame_callback = NULL;
+    config.send_frame_ctx = NULL;
 
     ret = espfsp_data_proto_init(&instance->client_push_data_proto, &config);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Data protocol initiation failed");
         return ret;
     }
 
-    config.type = ESPFSP_DATA_PROTO_TYPE_SEND,
-    config.mode = ESPFSP_DATA_PROTO_MODE_NAT,
-    config.recv_buffer = NULL,
-    config.send_fb = &instance->sender_frame,
-    config.send_frame_callback = send_frame,
-    config.send_frame_ctx = instance,
+    config.type = ESPFSP_DATA_PROTO_TYPE_SEND;
+    config.mode = ESPFSP_DATA_PROTO_MODE_NAT;
+    config.recv_buffer = NULL;
+    config.send_fb = &instance->sender_frame;
+    config.send_frame_callback = send_frame;
+    config.send_frame_ctx = instance;
 
-    ret = espfsp_data_proto_init(&instance->client_play_data_proto, &config);
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Data protocol initiation failed");
-        return ret;
-    }
-
-    return ret;
+    return espfsp_data_proto_init(&instance->client_play_data_proto, &config);
 }
 
 esp_err_t espfsp_server_data_protos_deinit(espfsp_server_instance_t *instance)
 {
     esp_err_t ret = ESP_OK;
 
-    ret = espfsp_data_proto_deinit(&instance->client_play_comm_proto);
+    ret = espfsp_data_proto_deinit(&instance->client_play_data_proto);
     if (ret != ESP_OK)
     {
         return ret;
     }
 
-    ret = espfsp_data_proto_deinit(&instance->client_push_comm_proto);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    return ret;
+    return espfsp_data_proto_deinit(&instance->client_push_data_proto);
 }

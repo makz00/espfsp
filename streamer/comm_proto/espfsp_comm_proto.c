@@ -277,7 +277,7 @@ static esp_err_t insert_action(
 
     if (!action.data)
     {
-        ESP_LOGE(TAG, "Create action for failed");
+        ESP_LOGE(TAG, "Create action failed");
         return ESP_FAIL;
     }
 
@@ -296,136 +296,80 @@ static esp_err_t insert_action(
 esp_err_t espfsp_comm_proto_session_init(
     espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_req_session_init_message_t *msg)
 {
-    esp_err_t ret = insert_action(
+    return insert_action(
         comm_proto,
         ESPFSP_COMM_PROTO_MSG_REQUEST,
         (uint8_t) ESPFSP_COMM_REQ_SESSION_INIT,
         (uint8_t *) msg,
         sizeof(espfsp_comm_proto_req_session_init_message_t));
-
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol session init failed");
-    }
-
-    return ret;
 }
 
 esp_err_t espfsp_comm_proto_session_terminate(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_req_session_terminate_message_t *msg)
 {
-    esp_err_t ret = insert_action(
+    return insert_action(
         comm_proto,
         ESPFSP_COMM_PROTO_MSG_REQUEST,
         (uint8_t) ESPFSP_COMM_REQ_SESSION_TERMINATE,
         (uint8_t *) msg,
         sizeof(espfsp_comm_proto_req_session_terminate_message_t));
-
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol session terminate failed");
-    }
-
-    return ret;
 }
 
 esp_err_t espfsp_comm_proto_session_ping(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_req_session_ping_message_t *msg)
 {
-    esp_err_t ret = insert_action(
+    return insert_action(
         comm_proto,
         ESPFSP_COMM_PROTO_MSG_REQUEST,
         (uint8_t) ESPFSP_COMM_REQ_SESSION_PING,
         (uint8_t *) msg,
         sizeof(espfsp_comm_proto_req_session_ping_message_t));
-
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol ping failed");
-    }
-
-    return ret;
 }
 
 esp_err_t espfsp_comm_proto_start_stream(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_req_start_stream_message_t *msg)
 {
-    esp_err_t ret = insert_action(
+    return insert_action(
         comm_proto,
         ESPFSP_COMM_PROTO_MSG_REQUEST,
         (uint8_t) ESPFSP_COMM_REQ_START_STREAM,
         (uint8_t *) msg,
         sizeof(espfsp_comm_proto_req_start_stream_message_t));
-
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol stream start failed");
-    }
-
-    return ret;
 }
 
 esp_err_t espfsp_comm_proto_stop_stream(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_req_stop_stream_message_t *msg)
 {
-    esp_err_t ret = insert_action(
+    return insert_action(
         comm_proto,
         ESPFSP_COMM_PROTO_MSG_REQUEST,
         (uint8_t) ESPFSP_COMM_REQ_STOP_STREAM,
         (uint8_t *) msg,
         sizeof(espfsp_comm_proto_req_stop_stream_message_t));
-
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol stream stop failed");
-    }
-
-    return ret;
 }
 
 esp_err_t espfsp_comm_proto_session_ack(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_session_ack_message_t *msg)
 {
-    esp_err_t ret = insert_action(
+    return insert_action(
         comm_proto,
         ESPFSP_COMM_PROTO_MSG_RESPONSE,
         (uint8_t) ESPFSP_COMM_RESP_SESSION_ACK,
         (uint8_t *) msg,
         sizeof(espfsp_comm_proto_resp_session_ack_message_t));
-
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol session ack failed");
-    }
-
-    return ret;
 }
 
 esp_err_t espfsp_comm_proto_session_pong(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_session_pong_message_t *msg)
 {
-    esp_err_t ret = insert_action(
+    return insert_action(
         comm_proto,
         ESPFSP_COMM_PROTO_MSG_RESPONSE,
         (uint8_t) ESPFSP_COMM_RESP_SESSION_PONG,
         (uint8_t *) msg,
         sizeof(espfsp_comm_proto_resp_session_pong_message_t));
-
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol session pong failed");
-    }
-
-    return ret;
 }
 
 esp_err_t espfsp_comm_proto_ack(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_ack_message_t *msg)
 {
-    esp_err_t ret = insert_action(
+    return insert_action(
         comm_proto,
         ESPFSP_COMM_PROTO_MSG_RESPONSE,
         (uint8_t) ESPFSP_COMM_RESP_ACK,
         (uint8_t *) msg,
         sizeof(espfsp_comm_proto_resp_ack_message_t));
-
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol ack failed");
-    }
-
-    return ret;
 }

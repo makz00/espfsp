@@ -8,83 +8,54 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
-#include "esp_netif_ip_addr.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #include "espfsp_client_push.h"
 #include "client_push/espfsp_state_def.h"
-#include "client_push/espfsp_data_task.h"
-#include "client_push/espfsp_session_and_control_task.h"
+#include "client_push/espfsp_comm_proto_conf.h"
+#include "client_push/espfsp_data_proto_conf.h"
+#include "client_common/espfsp_session_and_control_task.h"
 
 static const char *TAG = "ESPFSP_CLIENT_PUSH";
 
 static espfsp_client_push_state_t *state_ = NULL;
 
-static esp_err_t initialize_synchronizers(espfsp_client_push_instance_t * instance)
+static esp_err_t start_session_and_control_task(espfsp_client_push_instance_t * instance)
 {
-    esp_err_t ret = ESP_OK;
-    return ret;
-}
+    BaseType_t xStatus;
 
-static esp_err_t start_data_task(espfsp_client_push_instance_t * instance)
-{
-    BaseType_t xStatus = xTaskCreate(
-        espfsp_client_push_data_task,
-        "espfsp_client_push_data_task",
-        instance->config->data_task_info.stack_size,
-        (void *) instance,
-        instance->config->data_task_info.task_prio,
-        &instance->data_task_handle);
+    espfsp_client_session_and_control_task_data_t *data = (espfsp_client_session_and_control_task_data_t *) malloc(
+        sizeof(espfsp_client_session_and_control_task_data_t));
 
-    if (xStatus != pdPASS)
+    if (data == NULL)
     {
-        ESP_LOGE(TAG, "Could not start data task");
+        ESP_LOGE(TAG, "Cannot allocate memory for session and control task data");
         return ESP_FAIL;
     }
 
-    return ESP_OK;
-}
+    data->comm_proto = &instance->comm_proto;
+    data->local_port = instance->config->local.control_port;
+    data->remote_port = instance->config->remote.control_port;
+    data->remote_addr.addr = instance->config->remote_addr.addr;
 
-static esp_err_t start_session_and_control_task(espfsp_client_push_instance_t * instance)
-{
-    BaseType_t xStatus = xTaskCreate(
-        espfsp_client_push_session_and_control_task,
+    xStatus = xTaskCreate(
+        espfsp_client_session_and_control_task,
         "espfsp_client_push_session_and_control_task",
         instance->config->session_and_control_task_info.stack_size,
-        (void *) instance,
+        (void *) data,
         instance->config->session_and_control_task_info.task_prio,
         &instance->session_and_control_task_handle);
 
     if (xStatus != pdPASS)
     {
         ESP_LOGE(TAG, "Could not start session and control task");
+        free(data);
         return ESP_FAIL;
     }
 
     return ESP_OK;
-}
-
-static esp_err_t start_tasks(espfsp_client_push_instance_t * instance)
-{
-    esp_err_t ret = ESP_OK;
-
-    ret = start_data_task(instance);
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Data task has not been created successfully");
-        return ret;
-    }
-
-    ret = start_session_and_control_task(instance);
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Session and control task has not been created successfully");
-        return ret;
-    }
-
-    return ret;
 }
 
 static espfsp_client_push_instance_t *create_new_client_push(const espfsp_client_push_config_t *config)
@@ -118,18 +89,29 @@ static espfsp_client_push_instance_t *create_new_client_push(const espfsp_client
 
     esp_err_t err = ESP_OK;
 
-    err = initialize_synchronizers(instance);
-    if (err != ESP_OK)
+    instance->sender_frame.buf = (char *) malloc(config->frame_config.frame_max_len);
+    if (instance->sender_frame.buf == NULL)
     {
-        ESP_LOGE(TAG, "Initialization of synchronizers failed");
+        ESP_LOGE(TAG, "Sender frame buffer is not initialized");
         return NULL;
     }
 
-    err = start_tasks(instance);
+    err = espfsp_client_push_comm_protos_init(instance);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Start tasks failed");
         return NULL;
+    }
+
+    err = espfsp_client_push_data_protos_init(instance);
+    if (err != ESP_OK)
+    {
+        return NULL;
+    }
+
+    err = start_session_and_control_task(instance);
+    if (err != ESP_OK)
+    {
+        return err;
     }
 
     return instance;
@@ -139,18 +121,12 @@ static esp_err_t stop_tasks(espfsp_client_push_instance_t *instance)
 {
     esp_err_t ret = ESP_OK;
 
-    // inform sender task to stop sending data
-    // inform session and control task to close the session
+    espfsp_data_proto_stop(&instance->data_proto);
+    espfsp_comm_proto_stop(&instance->comm_proto);
 
-    vTaskDelete(instance->session_and_control_task_handle);
     vTaskDelete(instance->data_task_handle);
+    vTaskDelete(instance->session_and_control_task_handle);
 
-    return ret;
-}
-
-static esp_err_t deinitialize_synchronizers(espfsp_client_push_instance_t *instance)
-{
-    esp_err_t ret = ESP_OK;
     return ret;
 }
 
@@ -176,17 +152,22 @@ static esp_err_t remove_client_push(espfsp_client_push_instance_t *instance)
     ret = stop_tasks(instance);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Stop tasks failed");
         return ret;
     }
 
-    ret = deinitialize_synchronizers(instance);
+    ret = espfsp_client_push_data_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Deinitialization of synchronizers failed");
-        return ret;
+        return NULL;
     }
 
+    ret = espfsp_client_push_comm_protos_deinit(instance);
+    if (ret != ESP_OK)
+    {
+        return NULL;
+    }
+
+    free(instance->sender_frame.buf);
     free(instance->config);
     instance->used = false;
 

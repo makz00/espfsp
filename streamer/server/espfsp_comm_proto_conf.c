@@ -29,14 +29,13 @@ esp_err_t espfsp_server_comm_protos_init(espfsp_server_instance_t *instance)
     memset(config.req_callbacks, 0, sizeof(config.req_callbacks));
     memset(config.resp_callbacks, 0, sizeof(config.resp_callbacks));
 
-    config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = req_session_init_server_handler;
-    config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = req_session_terminate_server_handler;
+    config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = espfsp_server_req_session_init_handler;
+    config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = espfsp_server_req_session_terminate_handler;
     config.repetive_callback = NULL;
 
     ret = espfsp_comm_proto_init(&instance->client_push_comm_proto, &config);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Communication protocol initiation failed");
         return ret;
     }
 
@@ -46,20 +45,13 @@ esp_err_t espfsp_server_comm_protos_init(espfsp_server_instance_t *instance)
     memset(config.req_callbacks, 0, sizeof(config.req_callbacks));
     memset(config.resp_callbacks, 0, sizeof(config.resp_callbacks));
 
-    config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = req_session_init_server_handler;
-    config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = req_session_terminate_server_handler;
-    config.req_callbacks[ESPFSP_COMM_REQ_START_STREAM] = req_start_stream_server_handler;
-    config.req_callbacks[ESPFSP_COMM_REQ_STOP_STREAM] = req_stop_stream_server_handler;
+    config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = espfsp_server_req_session_init_handler;
+    config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = espfsp_server_req_session_terminate_handler;
+    config.req_callbacks[ESPFSP_COMM_REQ_START_STREAM] = espfsp_server_req_start_stream_handler;
+    config.req_callbacks[ESPFSP_COMM_REQ_STOP_STREAM] = espfsp_server_req_stop_stream_handler;
     config.repetive_callback = NULL;
 
-    ret = espfsp_comm_proto_init(&instance->client_play_comm_proto, &config);
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Communication protocol initiation failed");
-        return ret;
-    }
-
-    return ret;
+    return espfsp_comm_proto_init(&instance->client_play_comm_proto, &config);
 }
 
 esp_err_t espfsp_server_comm_protos_deinit(espfsp_server_instance_t *instance)
@@ -72,11 +64,5 @@ esp_err_t espfsp_server_comm_protos_deinit(espfsp_server_instance_t *instance)
         return ret;
     }
 
-    ret = espfsp_comm_proto_deinit(&instance->client_push_comm_proto);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    return ret;
+    return espfsp_comm_proto_deinit(&instance->client_push_comm_proto);
 }

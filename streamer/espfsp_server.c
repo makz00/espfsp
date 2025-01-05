@@ -40,7 +40,7 @@ static esp_err_t start_client_push_session_and_control_task(espfsp_server_instan
     data->port = instance->config->client_push_local.control_port;
 
     xStatus = xTaskCreate(
-        espfsp_session_and_control_task,
+        espfsp_server_session_and_control_task,
         "espfsp_server_client_push_session_and_control_task",
         instance->config->client_push_session_and_control_task_info.stack_size,
         (void *) data,
@@ -74,7 +74,7 @@ static esp_err_t start_client_play_session_and_control_task(espfsp_server_instan
     data->port = instance->config->client_play_local.control_port;
 
     xStatus = xTaskCreate(
-        espfsp_session_and_control_task,
+        espfsp_server_session_and_control_task,
         "espfsp_server_client_play_session_and_control_task",
         instance->config->client_play_session_and_control_task_info.stack_size,
         (void *) data,
@@ -98,18 +98,10 @@ static esp_err_t start_tasks(espfsp_server_instance_t * instance)
     ret = start_client_push_session_and_control_task(instance);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Session and control client push task has not been created successfully");
         return ret;
     }
 
-    ret = start_client_play_session_and_control_task(instance);
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Session and control client play task has not been created successfully");
-        return ret;
-    }
-
-    return ret;
+    return start_client_play_session_and_control_task(instance);
 }
 
 static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t *config)
@@ -164,28 +156,24 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
     err = espfsp_message_buffer_init(&instance->receiver_buffer, &receiver_buffer_config);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Buffer initialization failed");
         return NULL;
     }
 
     err = espfsp_server_comm_protos_init(instance);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Initialization of communication protocol failed");
         return NULL;
     }
 
     err = espfsp_server_data_protos_init(instance);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Initialization of data protocol failed");
         return NULL;
     }
 
     err = start_tasks(instance);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Start tasks failed");
         return NULL;
     }
 
@@ -196,8 +184,13 @@ static esp_err_t stop_tasks(espfsp_server_instance_t *instance)
 {
     esp_err_t ret = ESP_OK;
 
-    // Inform sender task to stop sending data
-    // Inform session and control task to close the session
+    espfsp_data_proto_stop(&instance->client_play_data_proto);
+    espfsp_comm_proto_stop(&instance->client_play_comm_proto);
+    espfsp_data_proto_stop(&instance->client_push_data_proto);
+    espfsp_comm_proto_stop(&instance->client_push_comm_proto);
+
+    vTaskDelete(instance->client_push_handlers[0].data_task_handle);
+    vTaskDelete(instance->client_play_handlers[0].data_task_handle);
 
     vTaskDelete(instance->client_push_handlers[0].session_and_control_task_handle);
     vTaskDelete(instance->client_play_handlers[0].session_and_control_task_handle);
@@ -227,28 +220,24 @@ static esp_err_t remove_server(espfsp_server_instance_t *instance)
     ret = stop_tasks(instance);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Stop tasks failed");
         return ret;
     }
 
     ret = espfsp_server_data_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Initialization of data protocol failed");
         return NULL;
     }
 
     ret = espfsp_server_comm_protos_deinit(instance);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Initialization of communication protocol failed");
         return NULL;
     }
 
     ret = espfsp_message_buffer_deinit(&instance->receiver_buffer);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Buffer initialization failed");
         return ret;
     }
 

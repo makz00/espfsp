@@ -238,15 +238,10 @@ void espfsp_message_buffer_process_message(const espfsp_message_t *message, espf
 
     if (ass->msg_received == ass->msg_total)
     {
-        ESP_LOGI(TAG, "Put FB in queue");
-
         ass->bits = MSG_ASS_CONSUMER_OWNED_VAL | MSG_ASS_FREE_VAL;
         if (xQueueSend(receiver_buffer->frameQueue, &ass, 0) != pdPASS)
         {
-            ESP_LOGI(TAG, "Put FB in queue FAILED");
+            ESP_LOGE(TAG, "Put FB in queue FAILED");
         }
-
-        UBaseType_t elems = uxQueueMessagesWaiting(receiver_buffer->frameQueue);
-        ESP_LOGI(TAG, "There is %d elems in queue", elems);
     }
 }
