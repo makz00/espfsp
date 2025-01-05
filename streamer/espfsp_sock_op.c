@@ -410,7 +410,7 @@ esp_err_t espfsp_create_tcp_server(int *sock, int port)
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "TCP server socket created");
+    ESP_LOGI(TAG, "TCP server socket listen");
     return ESP_OK;
 }
 
