@@ -22,7 +22,7 @@ typedef struct
     espfsp_connection_info_t local;
     espfsp_connection_info_t remote;
     espfsp_transport_t data_transport;
-    const char *host_ip;
+    struct esp_ip4_addr remote_addr;
 
     espfsp_frame_config_t frame_config;
     espfsp_cam_config_t cam_config;

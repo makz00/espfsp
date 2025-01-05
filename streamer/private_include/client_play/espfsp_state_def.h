@@ -11,8 +11,16 @@
 #include "espfsp_client_play.h"
 #include "espfsp_message_defs.h"
 #include "espfsp_message_buffer.h"
+#include "comm_proto/espfsp_comm_proto.h"
+#include "data_proto/espfsp_data_proto.h"
 
 #define CONFIG_ESPFSP_CLIENT_PLAY_MAX_INSTANCES 1
+
+typedef struct {
+    SemaphoreHandle_t mutex;
+    bool val;
+    int session_id;
+} espfsp_client_play_session_data_t;
 
 typedef struct
 {
@@ -22,6 +30,10 @@ typedef struct
     bool used;
 
     espfsp_receiver_buffer_t receiver_buffer;
+    espfsp_comm_proto_t comm_proto;
+    espfsp_data_proto_t data_proto;
+
+    espfsp_client_play_session_data_t session_data;
 } espfsp_client_play_instance_t;
 
 typedef struct
