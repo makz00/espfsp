@@ -21,14 +21,22 @@ esp_err_t espfsp_client_play_req_session_terminate_handler(
     espfsp_comm_proto_req_session_terminate_message_t *msg = (espfsp_comm_proto_req_session_terminate_message_t *) msg_content;
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) ctx;
 
-    xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY);
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return ESP_FAIL;
+    }
 
     if (instance->session_data.val && instance->session_data.session_id == msg->session_id)
     {
         instance->session_data.val = false;
     }
 
-    xSemaphoreGive(instance->session_data.mutex);
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
+    }
 
     return ESP_OK;
 }
@@ -39,18 +47,30 @@ esp_err_t espfsp_client_play_resp_session_ack_handler(
     espfsp_comm_proto_resp_session_ack_message_t *msg = (espfsp_comm_proto_resp_session_ack_message_t *) msg_content;
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) ctx;
 
-    xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY);
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return ESP_FAIL;
+    }
 
     if (instance->session_data.val)
     {
-        xSemaphoreGive(instance->session_data.mutex);
+        if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot give semaphore");
+            return ESP_FAIL;
+        }
         ESP_LOGE(TAG, "Cannot handle new session ack. There is already one session");
         return ESP_FAIL;
     }
 
     instance->session_data.val = true;
     instance->session_data.session_id = msg->session_id;
-    xSemaphoreGive(instance->session_data.mutex);
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
+    }
 
     return ESP_OK;
 }

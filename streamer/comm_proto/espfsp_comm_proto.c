@@ -62,7 +62,7 @@ static int receive_action_from_sock(espfsp_comm_proto_t *comm_proto, int sock, e
     esp_err_t err = ESP_OK;
     int received = 0;
 
-    err = espfsp_receive_no_block(sock, (void *)&comm_proto->tlv_buffer, sizeof(espfsp_comm_proto_tlv_t), &received);
+    err = espfsp_receive_no_block(sock, (char *) &comm_proto->tlv_buffer, sizeof(espfsp_comm_proto_tlv_t), &received);
     if (err != ESP_OK)
     {
         return  -1;
@@ -73,11 +73,8 @@ static int receive_action_from_sock(espfsp_comm_proto_t *comm_proto, int sock, e
         return 0;
     }
 
-    if (received != comm_proto->tlv_buffer.length + 4)
-    {
-        ESP_LOGE(TAG, "Receive bytes does not match length in TLV message");
-        return  -1;
-    }
+    ESP_LOGI(TAG, "Message received bytes=%d", received);
+    ESP_LOGI(TAG, "TLV received type=%d, subtype=%d, len=%d", comm_proto->tlv_buffer.type, comm_proto->tlv_buffer.subtype, comm_proto->tlv_buffer.length);
 
     action->type = comm_proto->tlv_buffer.type;
     action->subtype = comm_proto->tlv_buffer.subtype;
@@ -109,6 +106,8 @@ static esp_err_t execute_local_action(espfsp_comm_proto_t *comm_proto, int sock,
     }
 
     memcpy(comm_proto->tlv_buffer.value, action->data, action->length);
+
+    ESP_LOGI(TAG, "TLV to send type=%d, subtype=%d, len=%d", comm_proto->tlv_buffer.type, comm_proto->tlv_buffer.subtype, comm_proto->tlv_buffer.length);
 
     ret = espfsp_send(sock, (char *) &comm_proto->tlv_buffer, sizeof(espfsp_comm_proto_tlv_t));
     if (ret != ESP_OK)
@@ -278,6 +277,12 @@ static esp_err_t insert_action(
         .length = data_len,
         .data = (uint8_t *) malloc(data_len),
     };
+
+    if (data_len > MAX_COMM_PROTO_BUFFER_LEN)
+    {
+        ESP_LOGE(TAG, "Message too big");
+        return ESP_FAIL;
+    }
 
     if (!action.data)
     {

@@ -89,6 +89,20 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
 
     memcpy(instance->config, config, sizeof(espfsp_client_play_config_t));
 
+    instance->session_data.mutex = NULL;
+    instance->session_data.mutex = xSemaphoreCreateBinary();
+    if (instance->session_data.mutex == NULL)
+    {
+        ESP_LOGE(TAG, "Cannot init semaphore");
+        return NULL;
+    }
+
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give after init semaphore");
+        return NULL;
+    }
+
     instance->session_data.val = false;
 
     esp_err_t err = ESP_OK;
@@ -180,6 +194,8 @@ static esp_err_t remove_client_play(espfsp_client_play_instance_t *instance)
     {
         return ret;
     }
+
+    vSemaphoreDelete(instance->session_data.mutex);
 
     free(instance->config);
     instance->used = false;
@@ -295,23 +311,43 @@ static esp_err_t start_client_play_data_task(espfsp_client_play_instance_t * ins
     return ESP_OK;
 }
 
+#define SERVER_WAIT_TIMEOUT (5000 / portTICK_PERIOD_MS)
+
 esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
 {
     esp_err_t ret = ESP_OK;
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
     espfsp_comm_proto_req_start_stream_message_t msg;
 
-    xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY);
-
-    if (!instance->session_data.val)
+    while (1)
     {
-        xSemaphoreGive(instance->session_data.mutex);
-        ESP_LOGE(TAG, "Session with server has not been established");
-        return ESP_FAIL;
+        if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot take semaphore");
+            return ESP_FAIL;
+        }
+
+        if (instance->session_data.val)
+        {
+            break;
+        }
+
+        if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot give semaphore");
+            return ESP_FAIL;
+        }
+
+        ESP_LOGI(TAG, "Session with server has not been established yet. Waiting ...");
+        vTaskDelay(SERVER_WAIT_TIMEOUT);
     }
 
     msg.session_id = instance->session_data.session_id;
-    xSemaphoreGive(instance->session_data.mutex);
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
+    }
 
     ret = start_client_play_data_task(instance);
     if (ret != ESP_OK)
@@ -328,17 +364,29 @@ esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler)
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
     espfsp_comm_proto_req_stop_stream_message_t msg;
 
-    xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY);
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return ESP_FAIL;
+    }
 
     if (!instance->session_data.val)
     {
-        xSemaphoreGive(instance->session_data.mutex);
+        if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot give semaphore");
+            return ESP_FAIL;
+        }
         ESP_LOGE(TAG, "Session with server has not been established");
         return ESP_FAIL;
     }
 
     msg.session_id = instance->session_data.session_id;
-    xSemaphoreGive(instance->session_data.mutex);
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
+    }
 
     espfsp_data_proto_stop(&instance->data_proto);
 
