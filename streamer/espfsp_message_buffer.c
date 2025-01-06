@@ -82,6 +82,39 @@ static espfsp_message_assembly_t *get_free_assembly(espfsp_receiver_buffer_t *re
     return NULL;
 }
 
+static espfsp_message_assembly_t *get_earliest_used_assembly(espfsp_receiver_buffer_t *receiver_buffer)
+{
+    espfsp_message_assembly_t *to_ret = NULL;
+    struct timeval tv;
+
+    for (int i = 0; i < receiver_buffer->buffered_fbs; i++)
+    {
+        espfsp_message_assembly_t *cur = &receiver_buffer->fbs_messages_buf[i];
+
+        if (is_assembly_producer_owner(cur) && is_assembly_used(cur))
+        {
+            tv.tv_sec = cur->timestamp.tv_sec;
+            tv.tv_usec = cur->timestamp.tv_usec;
+            to_ret = cur;
+            break;
+        }
+    }
+
+    for (int i = 0; i < receiver_buffer->buffered_fbs; i++)
+    {
+        espfsp_message_assembly_t *cur = &receiver_buffer->fbs_messages_buf[i];
+
+        if (is_assembly_producer_owner(cur) && is_assembly_used(cur) && is_earlier(&cur->timestamp, &tv))
+        {
+            tv.tv_sec = cur->timestamp.tv_sec;
+            tv.tv_usec = cur->timestamp.tv_usec;
+            to_ret = cur;
+        }
+    }
+
+    return to_ret;
+}
+
 esp_err_t espfsp_message_buffer_init(espfsp_receiver_buffer_t *receiver_buffer, const espfsp_receiver_buffer_config_t *config)
 {
     // 1. Memory allocation
@@ -220,7 +253,12 @@ void espfsp_message_buffer_process_message(const espfsp_message_t *message, espf
         ass = get_free_assembly(receiver_buffer);
         if (ass == NULL && xQueueReceive(receiver_buffer->frameQueue, &ass, 0) != pdTRUE)
         {
-            return;
+            ass = get_earliest_used_assembly(receiver_buffer);
+            if (ass == NULL)
+            {
+                ESP_LOGE(TAG, "Bad usage. Assemblies not returned to buffer");
+                return;
+            }
         }
 
         ass->len = message->len;
