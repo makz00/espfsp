@@ -153,7 +153,7 @@ esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr_in 
 
 esp_err_t espfsp_send(int sock, char *rx_buffer, int rx_buffer_len)
 {
-    int err = send_all(sock, (u_int8_t *)&rx_buffer, rx_buffer_len);
+    int err = send_all(sock, (u_int8_t *) rx_buffer, rx_buffer_len);
     if (err < 0)
     {
         ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
@@ -165,7 +165,7 @@ esp_err_t espfsp_send(int sock, char *rx_buffer, int rx_buffer_len)
 
 esp_err_t espfsp_send_to(int sock, char *rx_buffer, int rx_buffer_len, struct sockaddr_in *source_addr)
 {
-    int err = send_all_to(sock, (u_int8_t *)&rx_buffer, rx_buffer_len, source_addr);
+    int err = send_all_to(sock, (u_int8_t *) rx_buffer, rx_buffer_len, source_addr);
     if (err < 0)
     {
         ESP_LOGE(TAG, "Error occurred during sending to: errno %d", errno);
@@ -262,14 +262,14 @@ static esp_err_t receive_block(int sock, char *rx_buffer, int rx_buffer_len, int
         *received = recv(sock, rx_buffer, rx_buffer_len, 0);
         if (*received < 0)
         {
-            ESP_LOGE(TAG, "Receive no block error occured");
+            ESP_LOGE(TAG, "Receive no block error occured: errno %d", errno);
             return ESP_FAIL;
         }
         return ESP_OK;
     } else if (ret == 0) {
         return ESP_OK;
     } else {
-        ESP_LOGE(TAG, "Select failed");
+        ESP_LOGE(TAG, "Select failed: errno %d", errno);
         return ESP_FAIL;
     }
 }
@@ -293,14 +293,14 @@ static esp_err_t receive_from_block(int sock,
         *received = recvfrom(sock, rx_buffer, rx_buffer_len, 0, (struct sockaddr *)source_addr, addr_len);
         if (*received < 0)
         {
-            ESP_LOGE(TAG, "Receive no block error occured");
+            ESP_LOGE(TAG, "Receive no block error occured: errno %d", errno);
             return ESP_FAIL;
         }
         return ESP_OK;
     } else if (ret == 0) {
         return ESP_OK;
     } else {
-        ESP_LOGE(TAG, "Select failed");
+        ESP_LOGE(TAG, "Select failed: errno %d", errno);
         return ESP_FAIL;
     }
 }
