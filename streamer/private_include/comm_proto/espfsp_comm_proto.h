@@ -22,6 +22,10 @@ typedef enum {
     ESPFSP_COMM_PROTO_STATE_ACTION,
     ESPFSP_COMM_PROTO_STATE_LISTEN,
     ESPFSP_COMM_PROTO_STATE_REPTIV,
+    ESPFSP_COMM_PROTO_STATE_RETURN,
+    ESPFSP_COMM_PROTO_STATE_CONN_CLSED,
+    ESPFSP_COMM_PROTO_STATE_CONN_RESET,
+    ESPFSP_COMM_PROTO_STATE_CONN_TMNTD,
     ESPFSP_COMM_PROTO_STATE_ERROR,
 } espfsp_comm_proto_state_t;
 
@@ -57,6 +61,9 @@ typedef struct {
     __espfsp_comm_proto_msg_cb req_callbacks[ESPFSP_COMM_REQ_MAX_NUMBER];
     __espfsp_comm_proto_msg_cb resp_callbacks[ESPFSP_COMM_RESP_MAX_NUMBER];
     __espfsp_comm_proto_cb repetive_callback;
+    __espfsp_comm_proto_cb conn_closed_callback;
+    __espfsp_comm_proto_cb conn_reset_callback;
+    __espfsp_comm_proto_cb conn_term_callback;
     uint64_t repetive_callback_freq_us;
     void *callback_ctx;
     int buffered_actions;

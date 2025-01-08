@@ -163,6 +163,35 @@ esp_err_t espfsp_send(int sock, char *rx_buffer, int rx_buffer_len)
     return ESP_OK;
 }
 
+esp_err_t espfsp_send_state(int sock, char *rx_buffer, int rx_buffer_len, espfsp_conn_state_t *conn_state)
+{
+    int err = send_all(sock, (u_int8_t *) rx_buffer, rx_buffer_len);
+    if (err < 0)
+    {
+        if (errno == EPIPE)
+        {
+            *conn_state = ESPFSP_CONN_STATE_CLOSED;
+            return ESP_OK;
+        }
+        else if(errno == ECONNRESET)
+        {
+            *conn_state = ESPFSP_CONN_STATE_RESET;
+            return ESP_OK;
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Probably connection terminated: errno %d", errno);
+            *conn_state = ESPFSP_CONN_STATE_TERMINATED;
+            return ESP_OK;
+        }
+
+        // ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+        // return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t espfsp_send_to(int sock, char *rx_buffer, int rx_buffer_len, struct sockaddr_in *source_addr)
 {
     int err = send_all_to(sock, (u_int8_t *) rx_buffer, rx_buffer_len, source_addr);
@@ -259,6 +288,7 @@ static esp_err_t receive_block(int sock, char *rx_buffer, int rx_buffer_len, int
 
     int ret = select(sock + 1, &readfds, NULL, NULL, timeout);
     if (ret > 0 && FD_ISSET(sock, &readfds)) {
+        // What if not whole message will be read?
         *received = recv(sock, rx_buffer, rx_buffer_len, 0);
         if (*received < 0)
         {
@@ -290,6 +320,7 @@ static esp_err_t receive_from_block(int sock,
 
     int ret = select(sock + 1, &readfds, NULL, NULL, timeout);
     if (ret > 0 && FD_ISSET(sock, &readfds)) {
+        // What if not whole message will be read?
         *received = recvfrom(sock, rx_buffer, rx_buffer_len, 0, (struct sockaddr *)source_addr, addr_len);
         if (*received < 0)
         {
@@ -329,6 +360,67 @@ esp_err_t espfsp_receive_no_block(int sock, char *rx_buffer, int rx_buffer_len, 
     timeout.tv_usec = 0;
 
     return receive_block(sock, rx_buffer, rx_buffer_len, received, &timeout);
+}
+
+static esp_err_t receive_block_state(
+    int sock,
+    char *rx_buffer,
+    int rx_buffer_len,
+    int *received,
+    struct timeval *timeout,
+    espfsp_conn_state_t *conn_state)
+{
+    *received = 0;
+    *conn_state = ESPFSP_CONN_STATE_GOOD;
+
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(sock, &readfds);
+
+    int ret = select(sock + 1, &readfds, NULL, NULL, timeout);
+    if (ret > 0 && FD_ISSET(sock, &readfds)) {
+        // What if not whole message will be read?
+        *received = recv(sock, rx_buffer, rx_buffer_len, 0);
+        if (*received == 0)
+        {
+            *conn_state = ESPFSP_CONN_STATE_CLOSED;
+            return ESP_OK;
+        }
+        else if (*received < 0)
+        {
+            *received == 0;
+            if (errno == ECONNRESET)
+            {
+                *conn_state = ESPFSP_CONN_STATE_RESET;
+                return ESP_OK;
+            }
+            else
+            {
+                ESP_LOGE(TAG, "Probably connection terminated: errno %d", errno);
+                *conn_state = ESPFSP_CONN_STATE_TERMINATED;
+                return ESP_OK;
+            }
+
+            // ESP_LOGE(TAG, "Receive no block error occured: errno %d", errno);
+            // return ESP_FAIL;
+        }
+        return ESP_OK;
+    } else if (ret == 0) {
+        return ESP_OK;
+    } else {
+        ESP_LOGE(TAG, "Select failed: errno %d", errno);
+        return ESP_FAIL;
+    }
+}
+
+esp_err_t espfsp_receive_no_block_state(
+    int sock, char *rx_buffer, int rx_buffer_len, int *received, espfsp_conn_state_t *conn_state)
+{
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+
+    return receive_block_state(sock, rx_buffer, rx_buffer_len, received, &timeout, conn_state);
 }
 
 esp_err_t espfsp_receive_from_no_block(
@@ -428,6 +520,9 @@ esp_err_t espfsp_create_tcp_client(int *sock, int client_port, struct sockaddr_i
 
     ESP_LOGI(TAG, "TCP client socket created");
     int err = 0;
+
+    int opt = 1;
+    setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     err = bind(*sock, (struct sockaddr *)&client_addr, sizeof(client_addr));
     if (err != 0)
