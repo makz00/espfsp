@@ -448,7 +448,6 @@ esp_err_t espfsp_connect(int sock, struct sockaddr_in *source_addr)
 
 esp_err_t espfsp_tcp_accept(int listen_sock, int *sock, struct sockaddr_in *source_addr, socklen_t *addr_len)
 {
-    int keep_alive = 1;
     char addr_str[128];
 
     *sock = accept(listen_sock, (struct sockaddr *) source_addr, addr_len);
@@ -458,7 +457,19 @@ esp_err_t espfsp_tcp_accept(int listen_sock, int *sock, struct sockaddr_in *sour
         return ESP_FAIL;
     }
 
-    setsockopt(*sock, SOL_SOCKET, SO_KEEPALIVE, &keep_alive, sizeof(int));
+    int keep_alive_opt = 1;
+
+    setsockopt(*sock, SOL_SOCKET, SO_KEEPALIVE, &keep_alive_opt, sizeof(keep_alive_opt));
+
+    int tcp_keepalive_opt = 20000; // TCP keepalive period in milliseconds
+    // int tcp_keepidle_opt = 1; // same as TCP_KEEPALIVE, but the value is in seconds
+    int tcp_keepintvl_opt = 4; // the interval between keepalive probes in seconds
+    int tcp_keepcnt_opt = 5; // number of keepalive probes before timing out
+
+    setsockopt(*sock, IPPROTO_TCP, TCP_KEEPALIVE, &tcp_keepalive_opt, sizeof(tcp_keepalive_opt));
+    // setsockopt(*sock, IPPROTO_TCP, TCP_KEEPIDLE, &tcp_keepidle_opt, sizeof(tcp_keepidle_opt));
+    setsockopt(*sock, IPPROTO_TCP, TCP_KEEPINTVL, &tcp_keepintvl_opt, sizeof(tcp_keepintvl_opt));
+    setsockopt(*sock, IPPROTO_TCP, TCP_KEEPCNT, &tcp_keepcnt_opt, sizeof(tcp_keepcnt_opt));
 
     inet_ntoa_r(source_addr->sin_addr, addr_str, sizeof(addr_str) - 1);
 
@@ -481,8 +492,8 @@ esp_err_t espfsp_create_tcp_server(int *sock, int port)
     ESP_LOGI(TAG, "TCP server socket created");
     int err = 0;
 
-    int opt = 1;
-    setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    int reuse_addr_opt = 1;
+    setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &reuse_addr_opt, sizeof(reuse_addr_opt));
 
     err = bind(*sock, (struct sockaddr *)&addr, sizeof(addr));
     if (err != 0)
@@ -561,6 +572,9 @@ esp_err_t espfsp_create_udp_server(int *sock, int port)
     ESP_LOGI(TAG, "UDP server socket created");
     int err = 0;
 
+    int opt = 1;
+    setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
     err = bind(*sock, (struct sockaddr *)&addr, sizeof(addr));
     if (err < 0)
     {
@@ -587,6 +601,9 @@ esp_err_t espfsp_create_udp_client(int *sock, int client_port, struct sockaddr_i
 
     ESP_LOGI(TAG, "UDP client socket created");
     int err = 0;
+
+    int opt = 1;
+    setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     err = bind(*sock, (struct sockaddr *)&client_addr, sizeof(client_addr));
     if (err < 0)
