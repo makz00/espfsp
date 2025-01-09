@@ -62,13 +62,14 @@ static esp_err_t receive_action_from_sock(
     int sock,
     espfsp_comm_proto_action_t *action,
     espfsp_conn_state_t *conn_state,
+    espfsp_comm_proto_tlv_t *tlv_buffer,
     int *received)
 {
     esp_err_t ret = ESP_OK;
     *received = 0;
 
     ret = espfsp_receive_no_block_state(
-        sock, (char *) &comm_proto->tlv_buffer, sizeof(espfsp_comm_proto_tlv_t), &received, conn_state);
+        sock, (char *) tlv_buffer, sizeof(espfsp_comm_proto_tlv_t), &received, conn_state);
     if (ret != ESP_OK)
     {
         *received = 0;
@@ -83,15 +84,15 @@ static esp_err_t receive_action_from_sock(
     ESP_LOGI(TAG, "Message received bytes=%d", received);
     ESP_LOGI(TAG,
              "TLV received type=%d, subtype=%d, len=%d",
-             comm_proto->tlv_buffer.type,
-             comm_proto->tlv_buffer.subtype,
-             comm_proto->tlv_buffer.length);
+             tlv_buffer->type,
+             tlv_buffer->subtype,
+             tlv_buffer->length);
 
-    action->type = comm_proto->tlv_buffer.type;
-    action->subtype = comm_proto->tlv_buffer.subtype;
-    action->length = comm_proto->tlv_buffer.length;
+    action->type = tlv_buffer->type;
+    action->subtype = tlv_buffer->subtype;
+    action->length = tlv_buffer->length;
 
-    action->data = (uint8_t *) malloc(comm_proto->tlv_buffer.length);
+    action->data = (uint8_t *) malloc(tlv_buffer->length);
     if (!action->data)
     {
         // Memory allocation did not happen, so we inform that 0 bytes are received
@@ -100,32 +101,36 @@ static esp_err_t receive_action_from_sock(
         return ESP_FAIL;
     }
 
-    memcpy(action->data, comm_proto->tlv_buffer.value, comm_proto->tlv_buffer.length);
+    memcpy(action->data, tlv_buffer->value, tlv_buffer->length);
     return ret;
 }
 
 static esp_err_t execute_local_action(
-    espfsp_comm_proto_t *comm_proto, int sock, espfsp_comm_proto_action_t *action, espfsp_conn_state_t *conn_state)
+    espfsp_comm_proto_t *comm_proto,
+    int sock,
+    espfsp_comm_proto_action_t *action,
+    espfsp_conn_state_t *conn_state,
+    espfsp_comm_proto_tlv_t *tlv_buffer)
 {
-    comm_proto->tlv_buffer.type = action->type;
-    comm_proto->tlv_buffer.subtype = action->subtype;
-    comm_proto->tlv_buffer.length = action->length;
+    tlv_buffer->type = action->type;
+    tlv_buffer->subtype = action->subtype;
+    tlv_buffer->length = action->length;
 
-    if (action->length > sizeof(comm_proto->tlv_buffer.value))
+    if (action->length > sizeof(tlv_buffer->value))
     {
         ESP_LOGE(TAG, "Size of given action is too big to fit in TLV buffer");
         return ESP_FAIL;
     }
 
-    memcpy(comm_proto->tlv_buffer.value, action->data, action->length);
+    memcpy(tlv_buffer->value, action->data, action->length);
 
     ESP_LOGI(TAG,
              "TLV to send type=%d, subtype=%d, len=%d",
-             comm_proto->tlv_buffer.type,
-             comm_proto->tlv_buffer.subtype,
-             comm_proto->tlv_buffer.length);
+             tlv_buffer->type,
+             tlv_buffer->subtype,
+             tlv_buffer->length);
 
-    return espfsp_send_state(sock, (char *) &comm_proto->tlv_buffer, sizeof(espfsp_comm_proto_tlv_t), conn_state);
+    return espfsp_send_state(sock, (char *) tlv_buffer, sizeof(espfsp_comm_proto_tlv_t), conn_state);
 }
 
 static esp_err_t check_and_execute_action(
@@ -174,20 +179,20 @@ static esp_err_t execute_remote_action(espfsp_comm_proto_t *comm_proto, espfsp_c
 }
 
 static void change_state_base_ret(
-    espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_state_t next_state, esp_err_t ret_val)
+    espfsp_comm_proto_state_t *state, espfsp_comm_proto_state_t next_state, esp_err_t ret_val)
 {
     if (ret_val != ESP_OK)
     {
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
+        *state = ESPFSP_COMM_PROTO_STATE_ERROR;
     }
     else
     {
-        comm_proto->state = next_state;
+        *state = next_state;
     }
 }
 
 static void change_state_base_conn_state(
-    espfsp_comm_proto_t *comm_proto, espfsp_conn_state_t conn_state)
+    espfsp_comm_proto_state_t *state, espfsp_conn_state_t conn_state)
 {
     switch (conn_state)
     {
@@ -195,20 +200,20 @@ static void change_state_base_conn_state(
         break;
 
     case ESPFSP_CONN_STATE_CLOSED:
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_CONN_CLSED;
+        *state = ESPFSP_COMM_PROTO_STATE_CONN_CLSED;
         break;
 
     case ESPFSP_CONN_STATE_RESET:
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_CONN_RESET;
+        *state = ESPFSP_COMM_PROTO_STATE_CONN_RESET;
         break;
 
     case ESPFSP_CONN_STATE_TERMINATED:
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_CONN_TMNTD;
+        *state = ESPFSP_COMM_PROTO_STATE_CONN_TMNTD;
         break;
 
     default:
         ESP_LOGE(TAG, "Connection state not handled");
-        comm_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
+        *state = ESPFSP_COMM_PROTO_STATE_ERROR;
         break;
     }
 }
@@ -216,13 +221,14 @@ static void change_state_base_conn_state(
 esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 {
     esp_err_t ret = ESP_OK;
+    espfsp_comm_proto_tlv_t tlv_buffer;
     espfsp_comm_proto_action_t action;
     espfsp_conn_state_t conn_state = ESPFSP_CONN_STATE_GOOD;
 
     ESP_LOGI(TAG, "Start communication handling");
 
-    // Start from LSISTEN, as server actions are planned after received requests
-    comm_proto->state = ESPFSP_COMM_PROTO_STATE_LISTEN;
+    // Start from LSISTEN, as actions are planned after received requests
+    espfsp_comm_proto_state_t state = ESPFSP_COMM_PROTO_STATE_LISTEN;
     comm_proto->en = 1;
 
     int64_t reptv_last_called = esp_timer_get_time();
@@ -230,13 +236,14 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 
     while (comm_proto->en)
     {
-        switch (comm_proto->state)
+        switch (state)
         {
         case ESPFSP_COMM_PROTO_STATE_LISTEN:
 
             int remote_action_received = 0;
 
-            ret = receive_action_from_sock(comm_proto, sock, &action, &conn_state, &remote_action_received);
+            ret = receive_action_from_sock(
+                comm_proto, sock, &action, &conn_state, &tlv_buffer, &remote_action_received);
 
             if (remote_action_received > 0)
             {
@@ -247,29 +254,29 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
             if (ret == ESP_OK && conn_state != ESPFSP_CONN_STATE_GOOD)
             {
                 // Connection can also be closed, reset, terminated ..., so it has to be handled here
-                change_state_base_conn_state(comm_proto, conn_state);
+                change_state_base_conn_state(&state, conn_state);
                 break;
             }
 
-            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_ACTION, ret);
+            change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_ACTION, ret);
             break;
 
         case ESPFSP_COMM_PROTO_STATE_ACTION:
 
             if (xQueueReceive(comm_proto->reqActionQueue, &action, 0) == pdPASS)
             {
-                ret = execute_local_action(comm_proto, sock, &action, &conn_state);
+                ret = execute_local_action(comm_proto, sock, &action, &conn_state, &tlv_buffer);
                 free(action.data);
 
                 if (ret == ESP_OK && conn_state != ESPFSP_CONN_STATE_GOOD)
                 {
                     // Connection can also be closed, reset, terminated ..., so it has to be handled here
-                    change_state_base_conn_state(comm_proto, conn_state);
+                    change_state_base_conn_state(&state, conn_state);
                     break;
                 }
             }
 
-            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_REPTIV, ret);
+            change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_REPTIV, ret);
             break;
 
         case ESPFSP_COMM_PROTO_STATE_REPTIV:
@@ -285,7 +292,7 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
                 }
             }
 
-            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_LISTEN, ret);
+            change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_LISTEN, ret);
             break;
 
         case ESPFSP_COMM_PROTO_STATE_RETURN:
@@ -298,12 +305,12 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
             if (comm_proto->config->conn_closed_callback == NULL)
             {
                 ESP_LOGE(TAG, "Connection closed state handler not configured");
-                change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_ERROR, ESP_FAIL);
+                change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_ERROR, ESP_FAIL);
                 break;
             }
 
             ret = comm_proto->config->conn_closed_callback(comm_proto, comm_proto->config->callback_ctx);
-            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_RETURN, ret);
+            change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_RETURN, ret);
             break;
 
         case ESPFSP_COMM_PROTO_STATE_CONN_RESET:
@@ -311,12 +318,12 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
             if (comm_proto->config->conn_reset_callback == NULL)
             {
                 ESP_LOGE(TAG, "Connection reset state handler not configured");
-                change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_ERROR, ESP_FAIL);
+                change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_ERROR, ESP_FAIL);
                 break;
             }
 
             ret = comm_proto->config->conn_reset_callback(comm_proto, comm_proto->config->callback_ctx);
-            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_RETURN, ret);
+            change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_RETURN, ret);
             break;
 
         case ESPFSP_COMM_PROTO_STATE_CONN_TMNTD:
@@ -324,12 +331,12 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
             if (comm_proto->config->conn_term_callback != NULL)
             {
                 ESP_LOGE(TAG, "Connection terminated state handler not configured");
-                change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_ERROR, ESP_FAIL);
+                change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_ERROR, ESP_FAIL);
                 break;
             }
 
             ret = comm_proto->config->conn_term_callback(comm_proto, comm_proto->config->callback_ctx);
-            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_RETURN, ret);
+            change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_RETURN, ret);
             break;
 
         case ESPFSP_COMM_PROTO_STATE_ERROR:
@@ -340,7 +347,7 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
         default:
 
             ESP_LOGE(TAG, "Communication protocol state not handled");
-            change_state_base_ret(comm_proto, ESPFSP_COMM_PROTO_STATE_ERROR, ESP_FAIL);
+            change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_ERROR, ESP_FAIL);
             break;
         }
     }

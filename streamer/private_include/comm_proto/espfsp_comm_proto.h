@@ -71,9 +71,7 @@ typedef struct {
 
 struct espfsp_comm_proto_t {
     espfsp_comm_proto_config_t *config;
-    espfsp_comm_proto_state_t state;
     QueueHandle_t reqActionQueue;
-    espfsp_comm_proto_tlv_t tlv_buffer;
     uint8_t en;
 };
 
