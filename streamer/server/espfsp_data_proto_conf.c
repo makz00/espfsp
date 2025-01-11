@@ -21,6 +21,10 @@ static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx)
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
 
     espfsp_fb_t *recv_buf_fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer);
+    if (recv_buf_fb == NULL)
+    {
+        return ESP_FAIL;
+    }
 
     fb->len = recv_buf_fb->len;
     fb->width = recv_buf_fb->width;
@@ -44,6 +48,7 @@ esp_err_t espfsp_server_data_protos_init(espfsp_server_instance_t *instance)
     config.send_fb = NULL;
     config.send_frame_callback = NULL;
     config.send_frame_ctx = NULL;
+    config.frame_config = &instance->config->frame_config;
 
     ret = espfsp_data_proto_init(&instance->client_push_data_proto, &config);
     if (ret != ESP_OK)
@@ -57,6 +62,7 @@ esp_err_t espfsp_server_data_protos_init(espfsp_server_instance_t *instance)
     config.send_fb = &instance->sender_frame;
     config.send_frame_callback = send_frame;
     config.send_frame_ctx = instance;
+    config.frame_config = &instance->config->frame_config;
 
     return espfsp_data_proto_init(&instance->client_play_data_proto, &config);
 }

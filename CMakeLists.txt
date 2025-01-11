@@ -6,7 +6,6 @@ set(srcs
     streamer/espfsp_server.c
     streamer/espfsp_sock_op.c
     streamer/espfsp_message_buffer.c
-    streamer/espfsp_stream_manager.c
 
     streamer/comm_proto/espfsp_comm_proto.c
 

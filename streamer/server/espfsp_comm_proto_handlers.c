@@ -10,161 +10,55 @@
 #include "freertos/task.h"
 
 #include "comm_proto/espfsp_comm_proto.h"
+#include "data_proto/espfsp_data_proto.h"
 #include "server/espfsp_state_def.h"
+#include "server/espfsp_session_manager.h"
 #include "server/espfsp_comm_proto_handlers.h"
-#include "server/espfsp_data_task.h"
 
 static const char *TAG = "SERVER_COMMUNICATION_PROTOCOL_HANDLERS";
 
 esp_err_t espfsp_server_req_session_init_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
+    esp_err_t ret = ESP_OK;
     espfsp_comm_proto_req_session_init_message_t *msg = (espfsp_comm_proto_req_session_init_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
+    espfsp_session_manager_t *session_manager = &instance->session_manager;
 
     espfsp_comm_proto_resp_session_ack_message_t resp;
-    espfsp_server_session_data_t **session_data = NULL;
+    uint32_t session_id = -123;
 
-    switch (msg->client_type)
+    ret = espfsp_session_manager_take(session_manager);
+    if (ret == ESP_OK)
     {
-    case ESPFSP_COMM_REQ_CLIENT_PUSH:
-
-        if (instance->client_push_session_data[0] != NULL)
+        ret = espfsp_session_manager_activate_session(session_manager, comm_proto);
+        if (ret == ESP_OK)
         {
-            ESP_LOGE(TAG, "Cannot accept new session for CLIEN_PUSH. There is already one");
-            return ESP_OK;
+            ret = espfsp_session_manager_get_session_id(session_manager, comm_proto, &session_id);
         }
 
-        resp.session_id = instance->client_push_next_session_id++;
-        session_data = &instance->client_push_session_data[0];
-        break;
-
-    case ESPFSP_COMM_REQ_CLIENT_PLAY:
-
-        if (instance->client_play_session_data[0] != NULL)
-        {
-            ESP_LOGE(TAG, "Cannot accept new session for CLIEN_PLAY. There is already one");
-            return ESP_OK;
-        }
-
-        resp.session_id = instance->client_play_next_session_id++;
-        session_data = &instance->client_play_session_data[0];
-        break;
-
-    default:
-
-        return ESP_FAIL;
+        espfsp_session_manager_release(session_manager);
     }
-
-    *session_data = (espfsp_server_session_data_t *) malloc(sizeof(espfsp_server_session_data_t));
-    if (*session_data == NULL)
+    if (ret == ESP_OK)
     {
-        ESP_LOGE(TAG, "Cannot allocate memory for new client");
-        return ESP_FAIL;
+        resp.session_id = session_id;
+        ret = espfsp_comm_proto_session_ack(comm_proto, &resp);
     }
-    (*session_data)->session_id = resp.session_id;
 
-    return espfsp_comm_proto_session_ack(comm_proto, &resp);
+    return ret;
 }
 
 esp_err_t espfsp_server_req_session_terminate_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
+    esp_err_t ret = ESP_OK;
     espfsp_comm_proto_req_session_terminate_message_t *msg = (espfsp_comm_proto_req_session_terminate_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
+    espfsp_session_manager_t *session_manager = &instance->session_manager;
 
-    if (instance->client_push_session_data[0] != NULL && instance->client_push_session_data[0]->session_id == msg->session_id)
+    ret = espfsp_session_manager_take(session_manager);
+    if (ret == ESP_OK)
     {
-        free(instance->client_push_session_data[0]);
-    }
-
-    if (instance->client_play_session_data[0] != NULL && instance->client_play_session_data[0]->session_id == msg->session_id)
-    {
-        free(instance->client_play_session_data[0]);
-    }
-
-    return ESP_OK;
-}
-
-static esp_err_t start_client_push_data_task(espfsp_server_instance_t * instance)
-{
-    BaseType_t xStatus;
-
-    espfsp_server_data_task_data_t *data = (espfsp_server_data_task_data_t *) malloc(
-        sizeof(espfsp_server_data_task_data_t));
-
-    if (data == NULL)
-    {
-        ESP_LOGE(TAG, "Cannot allocate memory for client push data task");
-        return ESP_FAIL;
-    }
-
-    data->data_proto = &instance->client_push_data_proto;
-    data->port = instance->config->client_push_local.data_port;
-
-    xStatus = xTaskCreatePinnedToCore(
-        espfsp_server_data_task,
-        "espfsp_server_client_push_data_task",
-        instance->config->client_push_data_task_info.stack_size,
-        (void *) data,
-        instance->config->client_push_data_task_info.task_prio,
-        &instance->client_push_handlers[0].data_task_handle,
-        1);
-
-    if (xStatus != pdPASS)
-    {
-        ESP_LOGE(TAG, "Could not start receiver task!");
-        free(data);
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}
-
-static esp_err_t start_client_play_data_task(espfsp_server_instance_t * instance)
-{
-    BaseType_t xStatus;
-
-    espfsp_server_data_task_data_t *data = (espfsp_server_data_task_data_t *) malloc(
-        sizeof(espfsp_server_data_task_data_t));
-
-    if (data == NULL)
-    {
-        ESP_LOGE(TAG, "Cannot allocate memory for client play data task");
-        return ESP_FAIL;
-    }
-
-    data->data_proto = &instance->client_play_data_proto;
-    data->port = instance->config->client_play_local.data_port;
-
-    xStatus = xTaskCreate(
-        espfsp_server_data_task,
-        "espfsp_server_client_play_data_task",
-        instance->config->client_play_data_task_info.stack_size,
-        (void *) data,
-        instance->config->client_play_data_task_info.task_prio,
-        &instance->client_play_handlers[0].data_task_handle);
-
-    if (xStatus != pdPASS)
-    {
-        ESP_LOGE(TAG, "Could not start receiver task!");
-        free(data);
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}
-
-static esp_err_t start_stream_tasks(espfsp_server_instance_t *instance)
-{
-    esp_err_t ret = ESP_OK;
-
-    ret = start_client_push_data_task(instance);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    ret = start_client_play_data_task(instance);
-    if (ret != ESP_OK) {
-        return ret;
+        ret = espfsp_session_manager_deactivate_session(session_manager, comm_proto);
+        espfsp_session_manager_release(session_manager);
     }
 
     return ret;
@@ -175,39 +69,38 @@ esp_err_t espfsp_server_req_start_stream_handler(espfsp_comm_proto_t *comm_proto
     esp_err_t ret = ESP_OK;
     espfsp_comm_proto_req_start_stream_message_t *received_msg = (espfsp_comm_proto_req_start_stream_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
+    espfsp_session_manager_t *session_manager = &instance->session_manager;
 
-    if (instance->client_play_session_data[0] == NULL || instance->client_play_session_data[0]->session_id != received_msg->session_id)
+    espfsp_comm_proto_req_start_stream_message_t send_msg;
+    espfsp_comm_proto_t *primary_push_comm_proto = NULL;
+    uint32_t primary_push_session_id = -123;
+
+    ret = espfsp_session_manager_take(session_manager);
+    if (ret == ESP_OK)
     {
-        return ESP_OK;
-    }
+        ret = espfsp_session_manager_get_primary_session(
+            session_manager, ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH, &primary_push_comm_proto);
+        if (ret == ESP_OK && primary_push_comm_proto != NULL)
+        {
+            ret = espfsp_session_manager_get_session_id(
+                session_manager, primary_push_comm_proto, &primary_push_session_id);
+        }
 
-    if (instance->client_push_session_data[0] == NULL)
+        espfsp_session_manager_release(session_manager);
+    }
+    if (ret == ESP_OK && primary_push_comm_proto != NULL && primary_push_session_id != -123)
     {
-        return ESP_OK;
+        send_msg.session_id = primary_push_session_id;
+        ret = espfsp_comm_proto_start_stream(primary_push_comm_proto, &send_msg);
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_data_proto_start(&instance->client_push_data_proto);
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_data_proto_start(&instance->client_play_data_proto);
+        }
     }
-
-    espfsp_comm_proto_req_start_stream_message_t send_msg = {
-        .session_id = instance->client_push_session_data[0]->session_id,
-    };
-
-    ret = espfsp_comm_proto_start_stream(&instance->client_push_comm_proto, &send_msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    return start_stream_tasks(instance);
-}
-
-static esp_err_t stop_stream_tasks(espfsp_server_instance_t *instance)
-{
-    esp_err_t ret = ESP_OK;
-
-    espfsp_data_proto_stop(&instance->client_push_data_proto);
-    espfsp_data_proto_stop(&instance->client_play_data_proto);
-
-    vTaskDelete(instance->client_push_handlers[0].data_task_handle);
-    vTaskDelete(instance->client_play_handlers[0].data_task_handle);
 
     return ret;
 }
@@ -217,41 +110,54 @@ esp_err_t espfsp_server_req_stop_stream_handler(espfsp_comm_proto_t *comm_proto,
     esp_err_t ret = ESP_OK;
     espfsp_comm_proto_req_stop_stream_message_t *received_msg = (espfsp_comm_proto_req_stop_stream_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
+    espfsp_session_manager_t *session_manager = &instance->session_manager;
 
-    if (instance->client_play_session_data[0] == NULL || instance->client_play_session_data[0]->session_id != received_msg->session_id)
+    espfsp_comm_proto_req_stop_stream_message_t send_msg;
+    espfsp_comm_proto_t *primary_push_comm_proto = NULL;
+    uint32_t primary_push_session_id = -123;
+
+    ret = espfsp_session_manager_take(session_manager);
+    if (ret == ESP_OK)
     {
-        return ESP_OK;
+        ret = espfsp_session_manager_get_primary_session(
+            session_manager, ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH, &primary_push_comm_proto);
+        if (ret == ESP_OK && primary_push_comm_proto != NULL)
+        {
+            ret = espfsp_session_manager_get_session_id(
+                session_manager, primary_push_comm_proto, &primary_push_session_id);
+        }
+
+        espfsp_session_manager_release(session_manager);
+    }
+    if (ret == ESP_OK && primary_push_comm_proto != NULL && primary_push_session_id != -123)
+    {
+        send_msg.session_id = primary_push_session_id;
+        ret = espfsp_comm_proto_stop_stream(primary_push_comm_proto, &send_msg);
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_data_proto_stop(&instance->client_push_data_proto);
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_data_proto_stop(&instance->client_play_data_proto);
+        }
     }
 
-    if (instance->client_push_session_data[0] == NULL)
-    {
-        return ESP_OK;
-    }
-
-    espfsp_comm_proto_req_stop_stream_message_t send_msg = {
-        .session_id = instance->client_push_session_data[0]->session_id,
-    };
-
-    ret = espfsp_comm_proto_stop_stream(&instance->client_push_comm_proto, &send_msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    ret = stop_stream_tasks(instance);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    // It is allowed to call this method as CLIENT_PUSH and CLIENT_PLAY data tasks should be stopped
-    return espfsp_message_buffer_clear(&instance->receiver_buffer);
+    return ret;
 }
 
 esp_err_t espfsp_server_connection_stop(espfsp_comm_proto_t *comm_proto, void *ctx)
 {
     esp_err_t ret = ESP_OK;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
+    espfsp_session_manager_t *session_manager = &instance->session_manager;
+
+    ret = espfsp_session_manager_take(session_manager);
+    if (ret == ESP_OK)
+    {
+        ret = espfsp_session_manager_deactivate_session(session_manager, comm_proto);
+        espfsp_session_manager_release(session_manager);
+    }
 
     return ret;
 }

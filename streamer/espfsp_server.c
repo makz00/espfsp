@@ -17,11 +17,19 @@
 #include "server/espfsp_state_def.h"
 #include "server/espfsp_comm_proto_conf.h"
 #include "server/espfsp_data_proto_conf.h"
+#include "server/espfsp_session_manager.h"
+#include "server/espfsp_data_task.h"
 #include "server/espfsp_session_and_control_task.h"
 
 static const char *TAG = "ESPFSP_SERVER";
 
 static espfsp_server_state_t *state_ = NULL;
+
+static uint32_t generate_session_id(espfsp_session_manager_session_type_t type)
+{
+    static uint32_t next_id = 1001;
+    return next_id++;
+}
 
 static esp_err_t start_client_push_session_and_control_task(espfsp_server_instance_t * instance)
 {
@@ -36,8 +44,11 @@ static esp_err_t start_client_push_session_and_control_task(espfsp_server_instan
         return ESP_FAIL;
     }
 
-    data->comm_proto = &instance->client_push_comm_proto;
-    data->port = instance->config->client_push_local.control_port;
+    data->session_manager = &instance->session_manager;
+    data->session_type = ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH;
+    data->server_port = instance->config->client_push_local.control_port;
+    data->connection_task_info.stack_size = instance->config->client_push_session_and_control_task_info.stack_size;
+    data->connection_task_info.task_prio = instance->config->client_push_session_and_control_task_info.task_prio;
 
     xStatus = xTaskCreate(
         espfsp_server_session_and_control_task,
@@ -45,12 +56,11 @@ static esp_err_t start_client_push_session_and_control_task(espfsp_server_instan
         instance->config->client_push_session_and_control_task_info.stack_size,
         (void *) data,
         instance->config->client_push_session_and_control_task_info.task_prio,
-        &instance->client_push_handlers[0].session_and_control_task_handle);
+        &instance->server_client_push_handle);
 
     if (xStatus != pdPASS)
     {
         ESP_LOGE(TAG, "Could not start receiver task!");
-        free(data);
         return ESP_FAIL;
     }
 
@@ -70,8 +80,11 @@ static esp_err_t start_client_play_session_and_control_task(espfsp_server_instan
         return ESP_FAIL;
     }
 
-    data->comm_proto = &instance->client_play_comm_proto;
-    data->port = instance->config->client_play_local.control_port;
+    data->session_manager = &instance->session_manager;
+    data->session_type = ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PLAY;
+    data->server_port = instance->config->client_play_local.control_port;
+    data->connection_task_info.stack_size = instance->config->client_play_session_and_control_task_info.stack_size;
+    data->connection_task_info.task_prio = instance->config->client_play_session_and_control_task_info.task_prio;
 
     xStatus = xTaskCreate(
         espfsp_server_session_and_control_task,
@@ -79,12 +92,78 @@ static esp_err_t start_client_play_session_and_control_task(espfsp_server_instan
         instance->config->client_play_session_and_control_task_info.stack_size,
         (void *) data,
         instance->config->client_play_session_and_control_task_info.task_prio,
-        &instance->client_play_handlers[0].session_and_control_task_handle);
+        &instance->server_client_play_handle);
 
     if (xStatus != pdPASS)
     {
         ESP_LOGE(TAG, "Could not start receiver task!");
-        free(data);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t start_client_push_data_task(espfsp_server_instance_t * instance)
+{
+    BaseType_t xStatus;
+
+    espfsp_server_data_task_data_t *data = (espfsp_server_data_task_data_t *) malloc(
+        sizeof(espfsp_server_data_task_data_t));
+
+    if (data == NULL)
+    {
+        ESP_LOGE(TAG, "Cannot allocate memory for client push data task");
+        return ESP_FAIL;
+    }
+
+    data->data_proto = &instance->client_push_data_proto;
+    data->server_port = instance->config->client_push_local.data_port;
+
+    xStatus = xTaskCreatePinnedToCore(
+        espfsp_server_data_task,
+        "espfsp_server_client_push_data_task",
+        instance->config->client_push_data_task_info.stack_size,
+        (void *) data,
+        instance->config->client_push_data_task_info.task_prio,
+        &instance->data_recv_task_handle,
+        1);
+
+    if (xStatus != pdPASS)
+    {
+        ESP_LOGE(TAG, "Could not start receiver task!");
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t start_client_play_data_task(espfsp_server_instance_t * instance)
+{
+    BaseType_t xStatus;
+
+    espfsp_server_data_task_data_t *data = (espfsp_server_data_task_data_t *) malloc(
+        sizeof(espfsp_server_data_task_data_t));
+
+    if (data == NULL)
+    {
+        ESP_LOGE(TAG, "Cannot allocate memory for client play data task");
+        return ESP_FAIL;
+    }
+
+    data->data_proto = &instance->client_play_data_proto;
+    data->server_port = instance->config->client_play_local.data_port;
+
+    xStatus = xTaskCreate(
+        espfsp_server_data_task,
+        "espfsp_server_client_play_data_task",
+        instance->config->client_play_data_task_info.stack_size,
+        (void *) data,
+        instance->config->client_play_data_task_info.task_prio,
+        &instance->data_send_task_handle);
+
+    if (xStatus != pdPASS)
+    {
+        ESP_LOGE(TAG, "Could not start receiver task!");
         return ESP_FAIL;
     }
 
@@ -101,7 +180,19 @@ static esp_err_t start_tasks(espfsp_server_instance_t * instance)
         return ret;
     }
 
-    return start_client_play_session_and_control_task(instance);
+    ret = start_client_play_session_and_control_task(instance);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    ret = start_client_push_data_task(instance);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    return start_client_play_data_task(instance);
 }
 
 static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t *config)
@@ -133,18 +224,12 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
 
     memcpy(instance->config, config, sizeof(espfsp_server_config_t));
 
-    instance->client_push_next_session_id = 1;
-    instance->client_play_next_session_id = 101;
-
-    memset(instance->client_push_session_data, 0, sizeof(instance->client_push_session_data));
-    memset(instance->client_play_session_data, 0, sizeof(instance->client_play_session_data));
-
     esp_err_t err = ESP_OK;
 
     instance->sender_frame.buf = (char *) malloc(config->frame_config.frame_max_len);
     if (instance->sender_frame.buf == NULL)
     {
-        ESP_LOGE(TAG, "Sender frame buffer is not initialized");
+        ESP_LOGE(TAG, "Memory allocation for sender frame buffer failed");
         return NULL;
     }
 
@@ -160,6 +245,20 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
     }
 
     err = espfsp_server_comm_protos_init(instance);
+    if (err != ESP_OK)
+    {
+        return NULL;
+    }
+
+    espfsp_server_session_manager_config_t session_manager_config = {
+        .client_push_comm_protos = &instance->client_push_comm_proto,
+        .client_push_comm_protos_count = CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS,
+        .client_play_comm_protos = &instance->client_play_comm_proto,
+        .client_play_comm_protos_count = CONFIG_ESPFSP_SERVER_CLIENT_PLAY_MAX_CONNECTIONS,
+        .session_id_gen = generate_session_id,
+    };
+
+    err = espfsp_session_manager_init(&instance->session_manager, &session_manager_config);
     if (err != ESP_OK)
     {
         return NULL;
@@ -182,20 +281,28 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
 
 static esp_err_t stop_tasks(espfsp_server_instance_t *instance)
 {
-    esp_err_t ret = ESP_OK;
-
-    espfsp_data_proto_stop(&instance->client_play_data_proto);
-    espfsp_comm_proto_stop(&instance->client_play_comm_proto);
     espfsp_data_proto_stop(&instance->client_push_data_proto);
-    espfsp_comm_proto_stop(&instance->client_push_comm_proto);
+    espfsp_data_proto_stop(&instance->client_play_data_proto);
 
-    vTaskDelete(instance->client_push_handlers[0].data_task_handle);
-    vTaskDelete(instance->client_play_handlers[0].data_task_handle);
+    for (int i = 0; i < CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS; i++)
+    {
+        espfsp_comm_proto_stop(&instance->client_push_comm_proto[i]);
+    }
 
-    vTaskDelete(instance->client_push_handlers[0].session_and_control_task_handle);
-    vTaskDelete(instance->client_play_handlers[0].session_and_control_task_handle);
+    for (int i = 0; i < CONFIG_ESPFSP_SERVER_CLIENT_PLAY_MAX_CONNECTIONS; i++)
+    {
+        espfsp_comm_proto_stop(&instance->client_play_comm_proto[i]);
+    }
 
-    return ret;
+    // Wait for task to stop
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    vTaskDelete(instance->server_client_push_handle);
+    vTaskDelete(instance->server_client_play_handle);
+    vTaskDelete(instance->data_send_task_handle);
+    vTaskDelete(instance->data_recv_task_handle);
+
+    return ESP_OK;
 }
 
 static esp_err_t remove_server(espfsp_server_instance_t *instance)
@@ -227,6 +334,12 @@ static esp_err_t remove_server(espfsp_server_instance_t *instance)
     if (ret != ESP_OK)
     {
         return ret;
+    }
+
+    ret = espfsp_session_manager_deinit(&instance->session_manager);
+    if (ret != ESP_OK)
+    {
+        return NULL;
     }
 
     ret = espfsp_server_comm_protos_deinit(instance);

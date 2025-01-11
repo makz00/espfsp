@@ -13,7 +13,6 @@
 
 #include "espfsp_sock_op.h"
 #include "server/espfsp_data_task.h"
-#include "comm_proto/espfsp_comm_proto.h"
 #include "data_proto/espfsp_data_proto.h"
 
 static const char *TAG = "ESPFSP_SERVER_DATA_TASK";
@@ -29,12 +28,12 @@ void espfsp_server_data_task(void *pvParameters)
 {
     espfsp_server_data_task_data_t *data = (espfsp_server_data_task_data_t *) pvParameters;
 
-    while (1)
+    while (1) // In later phase, synchronization should be added
     {
         esp_err_t ret = ESP_OK;
         int sock = 0;
 
-        ret = espfsp_create_udp_server(&sock, data->port);
+        ret = espfsp_create_udp_server(&sock, data->server_port);
         if (ret != ESP_OK)
         {
             ESP_LOGE(TAG, "Create UDP server failed");

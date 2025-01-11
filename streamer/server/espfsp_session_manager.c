@@ -275,7 +275,7 @@ esp_err_t espfsp_session_manager_activate_session(
 {
     esp_err_t ret = ESP_OK;
     espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
-    if (data != NULL)
+    if (data != NULL && data->session_id == UNACTIVE_SESSION_ID)
     {
         data->session_id = session_manager->config->session_id_gen(data->type);
         snprintf(data->name, sizeof(data->name), "CLIENT_NAME-%d", data->session_id);

@@ -13,45 +13,31 @@
 #include "espfsp_message_buffer.h"
 #include "comm_proto/espfsp_comm_proto.h"
 #include "data_proto/espfsp_data_proto.h"
+#include "server/espfsp_session_manager.h"
 
 #define CONFIG_ESPFSP_SERVER_MAX_INSTANCES 1
-#define CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS 1
+#define CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS 3
 #define CONFIG_ESPFSP_SERVER_CLIENT_PLAY_MAX_CONNECTIONS 1
 
 typedef struct
 {
-    TaskHandle_t data_task_handle;
-    TaskHandle_t session_and_control_task_handle;
-} espfsp_server_client_handlers_t;
-
-typedef struct
-{
-    int session_id;
-    espfsp_comm_proto_t comm_proto;
-    bool val;
-} espfsp_server_session_data_t;
-
-typedef struct
-{
-    espfsp_server_client_handlers_t client_push_handlers[CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS];
-    espfsp_server_client_handlers_t client_play_handlers[CONFIG_ESPFSP_SERVER_CLIENT_PLAY_MAX_CONNECTIONS];
+    TaskHandle_t data_send_task_handle;
+    TaskHandle_t data_recv_task_handle;
+    TaskHandle_t server_client_push_handle;
+    TaskHandle_t server_client_play_handle;
     espfsp_server_config_t *config;
     bool used;
 
     espfsp_fb_t sender_frame;
     espfsp_receiver_buffer_t receiver_buffer;
 
-    espfsp_comm_proto_t client_push_comm_proto;
-    espfsp_comm_proto_t client_play_comm_proto;
+    espfsp_comm_proto_t client_push_comm_proto[CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS];
+    espfsp_comm_proto_t client_play_comm_proto[CONFIG_ESPFSP_SERVER_CLIENT_PLAY_MAX_CONNECTIONS];
 
     espfsp_data_proto_t client_push_data_proto;
     espfsp_data_proto_t client_play_data_proto;
 
-    int client_push_next_session_id;
-    int client_play_next_session_id;
-
-    espfsp_server_session_data_t *client_push_session_data[CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS];
-    espfsp_server_session_data_t *client_play_session_data[CONFIG_ESPFSP_SERVER_CLIENT_PLAY_MAX_CONNECTIONS];
+    espfsp_session_manager_t session_manager;
 } espfsp_server_instance_t;
 
 typedef struct
