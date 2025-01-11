@@ -32,7 +32,7 @@ esp_err_t espfsp_server_comm_protos_init(espfsp_server_instance_t *instance)
     config.req_callbacks[ESPFSP_COMM_REQ_SESSION_INIT] = espfsp_server_req_session_init_handler;
     config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = espfsp_server_req_session_terminate_handler;
     config.repetive_callback = NULL;
-    config.repetive_callback = 100000000;
+    config.repetive_callback_freq_us = 100000000;
     config.conn_closed_callback = espfsp_server_connection_stop;
     config.conn_reset_callback = espfsp_server_connection_stop;
     config.conn_term_callback = espfsp_server_connection_stop;
@@ -40,7 +40,7 @@ esp_err_t espfsp_server_comm_protos_init(espfsp_server_instance_t *instance)
 
     for (int i = 0; i < CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS; i++)
     {
-        ret = espfsp_comm_proto_init(&instance->client_push_comm_proto, &config);
+        ret = espfsp_comm_proto_init(&instance->client_push_comm_proto[i], &config);
         if (ret != ESP_OK)
         {
             return ret;
@@ -58,7 +58,7 @@ esp_err_t espfsp_server_comm_protos_init(espfsp_server_instance_t *instance)
     config.req_callbacks[ESPFSP_COMM_REQ_START_STREAM] = espfsp_server_req_start_stream_handler;
     config.req_callbacks[ESPFSP_COMM_REQ_STOP_STREAM] = espfsp_server_req_stop_stream_handler;
     config.repetive_callback = NULL;
-    config.repetive_callback = 100000000;
+    config.repetive_callback_freq_us = 100000000;
     config.conn_closed_callback = espfsp_server_connection_stop;
     config.conn_reset_callback = espfsp_server_connection_stop;
     config.conn_term_callback = espfsp_server_connection_stop;

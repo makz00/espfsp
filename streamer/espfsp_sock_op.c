@@ -388,7 +388,7 @@ static esp_err_t receive_block_state(
         }
         else if (*received < 0)
         {
-            *received == 0;
+            *received = 0;
             if (errno == ECONNRESET)
             {
                 *conn_state = ESPFSP_CONN_STATE_RESET;

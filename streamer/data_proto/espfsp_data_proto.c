@@ -117,6 +117,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
 {
     esp_err_t ret = ESP_OK;
 
+    espfsp_data_proto_state_t next_state;
     ESP_LOGI(TAG, "Start data handling");
 
     data_proto->state = ESPFSP_DATA_PROTO_STATE_LOOP;
@@ -129,7 +130,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
         {
         case ESPFSP_DATA_PROTO_STATE_START_CHECK:
 
-            espfsp_data_proto_state_t next_state = ESPFSP_DATA_PROTO_STATE_START_CHECK;
+            next_state = ESPFSP_DATA_PROTO_STATE_START_CHECK;
             uint8_t start_val = NO_VAL;
 
             if (xQueueReceive(data_proto->stopQueue, &start_val, 0) == pdPASS)
@@ -150,7 +151,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
 
         case ESPFSP_DATA_PROTO_STATE_STOP_CHECK:
 
-            espfsp_data_proto_state_t next_state = ESPFSP_DATA_PROTO_STATE_SETTING;
+            next_state = ESPFSP_DATA_PROTO_STATE_SETTING;
             uint8_t stop_val = NO_VAL;
 
             if (xQueueReceive(data_proto->stopQueue, &stop_val, 0) == pdPASS)

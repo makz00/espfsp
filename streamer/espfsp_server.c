@@ -251,9 +251,9 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
     }
 
     espfsp_server_session_manager_config_t session_manager_config = {
-        .client_push_comm_protos = &instance->client_push_comm_proto,
+        .client_push_comm_protos = instance->client_push_comm_proto,
         .client_push_comm_protos_count = CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS,
-        .client_play_comm_protos = &instance->client_play_comm_proto,
+        .client_play_comm_protos = instance->client_play_comm_proto,
         .client_play_comm_protos_count = CONFIG_ESPFSP_SERVER_CLIENT_PLAY_MAX_CONNECTIONS,
         .session_id_gen = generate_session_id,
     };
@@ -339,7 +339,7 @@ static esp_err_t remove_server(espfsp_server_instance_t *instance)
     ret = espfsp_session_manager_deinit(&instance->session_manager);
     if (ret != ESP_OK)
     {
-        return NULL;
+        return ret;
     }
 
     ret = espfsp_server_comm_protos_deinit(instance);

@@ -18,10 +18,24 @@
 
 static const char *TAG = "ESPFSP_SERVER_SESSION_AND_CONTROL_TASK";
 
-static void handle_new_connection_task(espfsp_server_session_and_control_task_data_t *data, int sock)
+typedef struct
 {
+    espfsp_session_manager_t *session_manager;
+    espfsp_session_manager_session_type_t session_type;
+    int sock;
+} new_connection_data_t;
+
+static void handle_new_connection_task(void *pvParameters)
+{
+    new_connection_data_t *conn_data = (new_connection_data_t *) pvParameters;
+
+    espfsp_session_manager_t *session_manager = conn_data->session_manager;
+    espfsp_session_manager_session_type_t session_type = conn_data->session_type;
+    int sock = conn_data->sock;
+
+    free(conn_data);
+
     esp_err_t err = ESP_OK;
-    espfsp_session_manager_t *session_manager = data->session_manager;
     espfsp_comm_proto_t *comm_proto = NULL;
 
     ESP_LOGI(TAG, "Processing connection");
@@ -29,7 +43,7 @@ static void handle_new_connection_task(espfsp_server_session_and_control_task_da
     err = espfsp_session_manager_take(session_manager);
     if (err == ESP_OK)
     {
-        err = espfsp_session_manager_get_comm_proto(session_manager, data->session_type, &comm_proto);
+        err = espfsp_session_manager_get_comm_proto(session_manager, session_type, &comm_proto);
         espfsp_session_manager_release(session_manager);
     }
 
@@ -87,12 +101,24 @@ void espfsp_server_session_and_control_task(void *pvParameters)
                 continue;
             }
 
+            new_connection_data_t *conn_data = (new_connection_data_t *) malloc(sizeof(new_connection_data_t));
+            if (conn_data == NULL)
+            {
+                ESP_LOGE(TAG, "Memory allocation for connection data failed");
+                espfsp_remove_host(sock);
+                continue;
+            }
+
+            conn_data->session_manager = data->session_manager;
+            conn_data->session_type = data->session_type;
+            conn_data->sock = sock;
+
             // In order to safely deinitialize, task handler should be kept and freed
             BaseType_t xStatus = xTaskCreate(
                 handle_new_connection_task,
                 "handle_new_connection_task",
                 data->connection_task_info.stack_size,
-                (void *) data,
+                (void *) conn_data,
                 data->connection_task_info.task_prio,
                 NULL);
 

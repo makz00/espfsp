@@ -30,7 +30,7 @@ esp_err_t espfsp_client_play_comm_protos_init(espfsp_client_play_instance_t *ins
     config.req_callbacks[ESPFSP_COMM_REQ_SESSION_TERMINATE] = espfsp_client_play_req_session_terminate_handler;
     config.resp_callbacks[ESPFSP_COMM_RESP_SESSION_ACK] = espfsp_client_play_resp_session_ack_handler;
     config.repetive_callback = NULL;
-    config.repetive_callback = 100000000;
+    config.repetive_callback_freq_us = 100000000;
     config.conn_closed_callback = espfsp_client_play_connection_stop;
     config.conn_reset_callback = espfsp_client_play_connection_stop;
     config.conn_term_callback = espfsp_client_play_connection_stop;

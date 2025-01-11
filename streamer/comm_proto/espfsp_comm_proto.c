@@ -69,7 +69,7 @@ static esp_err_t receive_action_from_sock(
     *received = 0;
 
     ret = espfsp_receive_no_block_state(
-        sock, (char *) tlv_buffer, sizeof(espfsp_comm_proto_tlv_t), &received, conn_state);
+        sock, (char *) tlv_buffer, sizeof(espfsp_comm_proto_tlv_t), received, conn_state);
     if (ret != ESP_OK)
     {
         *received = 0;
@@ -81,7 +81,7 @@ static esp_err_t receive_action_from_sock(
         return ret;
     }
 
-    ESP_LOGI(TAG, "Message received bytes=%d", received);
+    ESP_LOGI(TAG, "Message received bytes=%d", *received);
     ESP_LOGI(TAG,
              "TLV received type=%d, subtype=%d, len=%d",
              tlv_buffer->type,

@@ -3,6 +3,8 @@
  * Author: Maksymilian Komarnicki
  */
 
+#include "string.h"
+
 #include "esp_err.h"
 #include "esp_log.h"
 
@@ -32,7 +34,7 @@ esp_err_t espfsp_session_manager_init(
         return ESP_FAIL;
     }
 
-    memset(session_manager->config, config, sizeof(espfsp_server_session_manager_config_t));
+    memcpy(session_manager->config, config, sizeof(espfsp_server_session_manager_config_t));
 
     session_manager->client_push_session_data = (espfsp_server_session_manager_data_t *) malloc(
         sizeof(espfsp_server_session_manager_data_t) * config->client_push_comm_protos_count);
@@ -78,13 +80,13 @@ esp_err_t espfsp_session_manager_init(
     if (session_manager->mutex == NULL)
     {
         ESP_LOGE(TAG, "Cannot init semaphore");
-        return NULL;
+        return ESP_FAIL;
     }
 
     if (xSemaphoreGive(session_manager->mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give after init semaphore");
-        return NULL;
+        return ESP_FAIL;
     }
 
     return ret;
@@ -278,7 +280,7 @@ esp_err_t espfsp_session_manager_activate_session(
     if (data != NULL && data->session_id == UNACTIVE_SESSION_ID)
     {
         data->session_id = session_manager->config->session_id_gen(data->type);
-        snprintf(data->name, sizeof(data->name), "CLIENT_NAME-%d", data->session_id);
+        snprintf(data->name, sizeof(data->name), "CLIENT_NAME-%ld", data->session_id);
     }
     else
     {
@@ -424,7 +426,7 @@ esp_err_t espfsp_session_manager_get_active_sessions(
 
             if (data->active && *active_sessions_count < comm_proto_buf_len)
             {
-                comm_proto_buf[*active_sessions_count] = data;
+                comm_proto_buf[*active_sessions_count] = data->comm_proto;
                 *active_sessions_count += 1;
             }
         }
