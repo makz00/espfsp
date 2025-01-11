@@ -18,8 +18,8 @@
 
 typedef struct {
     SemaphoreHandle_t mutex;
-    bool val;
     int session_id;
+    bool val;
 } espfsp_client_play_session_data_t;
 
 typedef struct

@@ -7,10 +7,14 @@
 
 #include "esp_err.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #include <stdint.h>
 #include <stddef.h>
 
 #include "espfsp_config.h"
+#include "espfsp_frame_config.h"
 #include "espfsp_message_buffer.h"
 #include "comm_proto/espfsp_comm_proto.h"
 
@@ -34,8 +38,12 @@ typedef enum {
 } espfsp_data_proto_mode_t;
 
 typedef enum {
+    ESPFSP_DATA_PROTO_STATE_START_CHECK,
+    ESPFSP_DATA_PROTO_STATE_STOP_CHECK,
+    ESPFSP_DATA_PROTO_STATE_SETTING,
     ESPFSP_DATA_PROTO_STATE_LOOP,
     ESPFSP_DATA_PROTO_STATE_CONTROL,
+    ESPFSP_DATA_PROTO_STATE_RETURN,
     ESPFSP_DATA_PROTO_STATE_ERROR,
 } espfsp_data_proto_state_t;
 
@@ -48,18 +56,25 @@ typedef struct {
     espfsp_fb_t *send_fb;                                   // Send FB has to be configured; It is not managed by Data Protocol
     __espfsp_data_proto_send_frame send_frame_callback;     // Callback to obtain FB that will be sent by Data Protocol
     void *send_frame_ctx;
+    espfsp_frame_config_t *frame_config;
 } espfsp_data_proto_config_t;
 
 typedef struct {
     espfsp_data_proto_config_t *config;
     espfsp_data_proto_state_t state;
     uint64_t last_traffic;
+    QueueHandle_t startQueue;
+    QueueHandle_t stopQueue;
+    QueueHandle_t settingsQueue;
+    espfsp_frame_config_t frame_config;
     uint8_t en;
 } espfsp_data_proto_t;
 
 esp_err_t espfsp_data_proto_init(espfsp_data_proto_t *data_proto, espfsp_data_proto_config_t *config);
 esp_err_t espfsp_data_proto_deinit(espfsp_data_proto_t *data_proto);
 
-// Data Receiver Protocol has to be associated with one running Communication Protocol.
-esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock, espfsp_comm_proto_t *comm_proto);
+esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock);
+esp_err_t espfsp_data_proto_start(espfsp_data_proto_t *data_proto);
 esp_err_t espfsp_data_proto_stop(espfsp_data_proto_t *data_proto);
+
+esp_err_t espfsp_data_proto_set_frame_params(espfsp_data_proto_t *data_proto, espfsp_frame_config_t *frame_config);

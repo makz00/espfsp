@@ -20,10 +20,9 @@ static const char *TAG = "ESPFSP_SERVER_DATA_TASK";
 
 static void handle_new_connection(espfsp_server_data_task_data_t *data, int sock)
 {
-    espfsp_comm_proto_t *comm_proto = data->comm_proto;
     espfsp_data_proto_t *data_proto = data->data_proto;
 
-    espfsp_data_proto_run(data_proto, sock, comm_proto);
+    espfsp_data_proto_run(data_proto, sock);
 }
 
 void espfsp_server_data_task(void *pvParameters)

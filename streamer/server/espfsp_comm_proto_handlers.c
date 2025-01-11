@@ -98,7 +98,6 @@ static esp_err_t start_client_push_data_task(espfsp_server_instance_t * instance
     }
 
     data->data_proto = &instance->client_push_data_proto;
-    data->comm_proto = &instance->client_push_comm_proto;
     data->port = instance->config->client_push_local.data_port;
 
     xStatus = xTaskCreatePinnedToCore(
@@ -134,7 +133,6 @@ static esp_err_t start_client_play_data_task(espfsp_server_instance_t * instance
     }
 
     data->data_proto = &instance->client_play_data_proto;
-    data->comm_proto = &instance->client_play_comm_proto;
     data->port = instance->config->client_play_local.data_port;
 
     xStatus = xTaskCreate(
@@ -248,4 +246,12 @@ esp_err_t espfsp_server_req_stop_stream_handler(espfsp_comm_proto_t *comm_proto,
 
     // It is allowed to call this method as CLIENT_PUSH and CLIENT_PLAY data tasks should be stopped
     return espfsp_message_buffer_clear(&instance->receiver_buffer);
+}
+
+esp_err_t espfsp_server_connection_stop(espfsp_comm_proto_t *comm_proto, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
+
+    return ret;
 }

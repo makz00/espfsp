@@ -3,6 +3,8 @@
  * Author: Maksymilian Komarnicki
  */
 
+#pragma once
+
 #include "esp_err.h"
 
 #include "server/espfsp_state_def.h"

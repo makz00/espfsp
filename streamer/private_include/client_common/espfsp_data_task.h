@@ -12,7 +12,6 @@
 
 typedef struct {
     espfsp_data_proto_t *data_proto;
-    espfsp_comm_proto_t *comm_proto;
     int local_port;
     int remote_port;
     struct esp_ip4_addr remote_addr;

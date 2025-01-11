@@ -287,7 +287,6 @@ static esp_err_t start_client_play_data_task(espfsp_client_play_instance_t * ins
     }
 
     data->data_proto = &instance->data_proto;
-    data->comm_proto = &instance->comm_proto;
     data->local_port = instance->config->local.data_port;
     data->remote_port = instance->config->remote.data_port;
     data->remote_addr.addr = instance->config->remote_addr.addr;

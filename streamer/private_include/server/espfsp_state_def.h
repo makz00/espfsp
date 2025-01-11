@@ -27,6 +27,8 @@ typedef struct
 typedef struct
 {
     int session_id;
+    espfsp_comm_proto_t comm_proto;
+    bool val;
 } espfsp_server_session_data_t;
 
 typedef struct
@@ -38,8 +40,10 @@ typedef struct
 
     espfsp_fb_t sender_frame;
     espfsp_receiver_buffer_t receiver_buffer;
+
     espfsp_comm_proto_t client_push_comm_proto;
     espfsp_comm_proto_t client_play_comm_proto;
+
     espfsp_data_proto_t client_push_data_proto;
     espfsp_data_proto_t client_play_data_proto;
 
