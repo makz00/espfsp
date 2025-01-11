@@ -23,6 +23,7 @@ esp_err_t espfsp_client_play_data_protos_init(espfsp_client_play_instance_t *ins
     config.send_fb = NULL;
     config.send_frame_callback = NULL;
     config.send_frame_ctx = NULL;
+    config.frame_config = &instance->config->frame_config;
 
     return espfsp_data_proto_init(&instance->data_proto, &config);
 }

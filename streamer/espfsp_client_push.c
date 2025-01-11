@@ -67,7 +67,7 @@ static esp_err_t start_data_task(espfsp_client_push_instance_t * instance)
 
     if (data == NULL)
     {
-        ESP_LOGE(TAG, "Cannot allocate memory for data task");
+        ESP_LOGE(TAG, "Cannot allocate memory for client play data task");
         return ESP_FAIL;
     }
 

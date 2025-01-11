@@ -20,6 +20,8 @@
 #include "client_common/espfsp_session_and_control_task.h"
 #include "client_common/espfsp_data_task.h"
 
+#define SERVER_WAIT_TIMEOUT (5000 / portTICK_PERIOD_MS)
+
 static const char *TAG = "ESPFSP_CLIENT_PLAY";
 
 static espfsp_client_play_state_t *state_ = NULL;
@@ -53,7 +55,42 @@ static esp_err_t start_session_and_control_task(espfsp_client_play_instance_t * 
     if (xStatus != pdPASS)
     {
         ESP_LOGE(TAG, "Could not start session and control task");
-        free(data);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t start_data_task(espfsp_client_play_instance_t * instance)
+{
+    BaseType_t xStatus;
+
+    espfsp_client_data_task_data_t *data = (espfsp_client_data_task_data_t *) malloc(
+        sizeof(espfsp_client_data_task_data_t));
+
+    if (data == NULL)
+    {
+        ESP_LOGE(TAG, "Cannot allocate memory for client push data task");
+        return ESP_FAIL;
+    }
+
+    data->data_proto = &instance->data_proto;
+    data->local_port = instance->config->local.data_port;
+    data->remote_port = instance->config->remote.data_port;
+    data->remote_addr.addr = instance->config->remote_addr.addr;
+
+    xStatus = xTaskCreatePinnedToCore(
+        espfsp_client_data_task,
+        "espfsp_server_client_push_data_task",
+        instance->config->data_task_info.stack_size,
+        (void *) data,
+        instance->config->data_task_info.task_prio,
+        &instance->data_task_handle,
+        1);
+
+    if (xStatus != pdPASS)
+    {
+        ESP_LOGE(TAG, "Could not start receiver task!");
         return ESP_FAIL;
     }
 
@@ -89,6 +126,9 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
 
     memcpy(instance->config, config, sizeof(espfsp_client_play_config_t));
 
+    instance->session_data.session_id = -1;
+    instance->session_data.active = false;
+
     instance->session_data.mutex = NULL;
     instance->session_data.mutex = xSemaphoreCreateBinary();
     if (instance->session_data.mutex == NULL)
@@ -102,8 +142,6 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
         ESP_LOGE(TAG, "Cannot give after init semaphore");
         return NULL;
     }
-
-    instance->session_data.val = false;
 
     esp_err_t err = ESP_OK;
 
@@ -136,6 +174,13 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
         return NULL;
     }
 
+    err = start_data_task(instance);
+    if (err != ESP_OK)
+    {
+        return NULL;
+    }
+
+
     return instance;
 }
 
@@ -145,6 +190,9 @@ static esp_err_t stop_tasks(espfsp_client_play_instance_t *instance)
 
     espfsp_data_proto_stop(&instance->data_proto);
     espfsp_comm_proto_stop(&instance->comm_proto);
+
+    // Wait for task to stop
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     vTaskDelete(instance->data_task_handle);
     vTaskDelete(instance->session_and_control_task_handle);
@@ -273,45 +321,6 @@ esp_err_t espfsp_client_play_return_fb(espfsp_client_play_handler_t handler, esp
     return ret;
 }
 
-static esp_err_t start_client_play_data_task(espfsp_client_play_instance_t * instance)
-{
-    BaseType_t xStatus;
-
-    espfsp_client_data_task_data_t *data = (espfsp_client_data_task_data_t *) malloc(
-        sizeof(espfsp_client_data_task_data_t));
-
-    if (data == NULL)
-    {
-        ESP_LOGE(TAG, "Cannot allocate memory for client push data task");
-        return ESP_FAIL;
-    }
-
-    data->data_proto = &instance->data_proto;
-    data->local_port = instance->config->local.data_port;
-    data->remote_port = instance->config->remote.data_port;
-    data->remote_addr.addr = instance->config->remote_addr.addr;
-
-    xStatus = xTaskCreatePinnedToCore(
-        espfsp_client_data_task,
-        "espfsp_server_client_push_data_task",
-        instance->config->data_task_info.stack_size,
-        (void *) data,
-        instance->config->data_task_info.task_prio,
-        &instance->data_task_handle,
-        1);
-
-    if (xStatus != pdPASS)
-    {
-        ESP_LOGE(TAG, "Could not start receiver task!");
-        free(data);
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}
-
-#define SERVER_WAIT_TIMEOUT (5000 / portTICK_PERIOD_MS)
-
 esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
 {
     esp_err_t ret = ESP_OK;
@@ -326,7 +335,7 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
             return ESP_FAIL;
         }
 
-        if (instance->session_data.val)
+        if (instance->session_data.active)
         {
             break;
         }
@@ -348,7 +357,7 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
         return ESP_FAIL;
     }
 
-    ret = start_client_play_data_task(instance);
+    ret = espfsp_data_proto_start(&instance->data_proto);
     if (ret != ESP_OK)
     {
         return ret;
@@ -369,7 +378,7 @@ esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler)
         return ESP_FAIL;
     }
 
-    if (!instance->session_data.val)
+    if (!instance->session_data.active)
     {
         if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
         {
@@ -387,13 +396,7 @@ esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler)
         return ESP_FAIL;
     }
 
-    espfsp_data_proto_stop(&instance->data_proto);
-
-    // Wait a moment
-
-    vTaskDelete(instance->data_task_handle);
-
-    ret = espfsp_message_buffer_clear(&instance->receiver_buffer);
+    ret = espfsp_data_proto_start(&instance->data_proto);
     if (ret != ESP_OK)
     {
         return ret;

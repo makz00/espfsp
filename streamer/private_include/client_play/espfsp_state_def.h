@@ -18,8 +18,8 @@
 
 typedef struct {
     SemaphoreHandle_t mutex;
-    int session_id;
-    bool val;
+    uint32_t session_id;
+    bool active;
 } espfsp_client_play_session_data_t;
 
 typedef struct
@@ -30,6 +30,7 @@ typedef struct
     bool used;
 
     espfsp_receiver_buffer_t receiver_buffer;
+
     espfsp_comm_proto_t comm_proto;
     espfsp_data_proto_t data_proto;
 

@@ -25,6 +25,7 @@ esp_err_t espfsp_client_push_req_session_terminate_handler(espfsp_comm_proto_t *
     if (instance->session_data.active && instance->session_data.session_id == msg->session_id)
     {
         instance->session_data.active = false;
+        instance->session_data.session_id = -1;
     }
 
     return ret;
