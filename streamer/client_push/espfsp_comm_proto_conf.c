@@ -32,6 +32,10 @@ esp_err_t espfsp_client_push_comm_protos_init(espfsp_client_push_instance_t *ins
     config.req_callbacks[ESPFSP_COMM_REQ_STOP_STREAM] = espfsp_client_push_req_stop_stream_handler;
     config.resp_callbacks[ESPFSP_COMM_RESP_SESSION_ACK] = espfsp_client_push_resp_session_ack_handler;
     config.repetive_callback = NULL;
+    config.repetive_callback = 100000000;
+    config.conn_closed_callback = espfsp_client_push_connection_stop;
+    config.conn_reset_callback = espfsp_client_push_connection_stop;
+    config.conn_term_callback = espfsp_client_push_connection_stop;
 
     ret = espfsp_comm_proto_init(&instance->comm_proto, &config);
     if (ret != ESP_OK)

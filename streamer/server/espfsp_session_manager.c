@@ -222,7 +222,7 @@ esp_err_t espfsp_session_manager_release(espfsp_session_manager_t *session_manag
     if (xSemaphoreGive(session_manager->mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");
-        return ESP_FAIL
+        return ESP_FAIL;
     }
 
     return ESP_OK;

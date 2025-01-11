@@ -31,7 +31,7 @@ void espfsp_client_session_and_control_task(void *pvParameters)
     struct sockaddr_in dest_addr;
     espfsp_set_addr(&dest_addr, &data->remote_addr, data->remote_port);
 
-    while (1)
+    while (1) // In later phase, synchronization should be added
     {
         esp_err_t ret = ESP_OK;
         int sock = 0;

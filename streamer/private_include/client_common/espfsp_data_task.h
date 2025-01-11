@@ -8,7 +8,6 @@
 #include "esp_netif.h"
 
 #include "data_proto/espfsp_data_proto.h"
-#include "comm_proto/espfsp_comm_proto.h"
 
 typedef struct {
     espfsp_data_proto_t *data_proto;

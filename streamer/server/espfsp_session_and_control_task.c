@@ -101,6 +101,12 @@ void espfsp_server_session_and_control_task(void *pvParameters)
                 ESP_LOGE(TAG, "Task create for new connection failed");
             }
         }
+
+        ret = espfsp_remove_host(listen_sock);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Remove TCP server failed");
+        }
     }
 
     free(data);

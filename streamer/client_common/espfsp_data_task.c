@@ -13,7 +13,6 @@
 
 #include "espfsp_sock_op.h"
 #include "client_common/espfsp_data_task.h"
-#include "comm_proto/espfsp_comm_proto.h"
 #include "data_proto/espfsp_data_proto.h"
 
 static const char *TAG = "ESPFSP_CLIENT_DATA_TASK";

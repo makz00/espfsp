@@ -29,6 +29,7 @@ esp_err_t espfsp_client_push_data_protos_init(espfsp_client_push_instance_t *ins
     config.send_fb = &instance->sender_frame;
     config.send_frame_callback = send_frame;
     config.send_frame_ctx = instance;
+    config.frame_config = &instance->config->frame_config;
 
     return espfsp_data_proto_init(&instance->data_proto, &config);
 }
