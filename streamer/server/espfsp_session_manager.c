@@ -27,7 +27,7 @@ esp_err_t espfsp_session_manager_init(
     esp_err_t ret = ESP_OK;
 
     session_manager->config = (espfsp_server_session_manager_config_t *) malloc(
-        sizeof(espfsp_server_session_manager_config_t *));
+        sizeof(espfsp_server_session_manager_config_t));
     if (session_manager->config == NULL)
     {
         ESP_LOGE(TAG, "Memory allocation failed for configuration");

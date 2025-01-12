@@ -76,7 +76,7 @@ static esp_err_t receive_action_from_sock(
         return ret;
     }
 
-    if (received == 0)
+    if ((*received) == 0)
     {
         return ret;
     }
@@ -328,7 +328,7 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 
         case ESPFSP_COMM_PROTO_STATE_CONN_TMNTD:
 
-            if (comm_proto->config->conn_term_callback != NULL)
+            if (comm_proto->config->conn_term_callback == NULL)
             {
                 ESP_LOGE(TAG, "Connection terminated state handler not configured");
                 change_state_base_ret(&state, ESPFSP_COMM_PROTO_STATE_ERROR, ESP_FAIL);

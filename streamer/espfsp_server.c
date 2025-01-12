@@ -276,6 +276,8 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
         return NULL;
     }
 
+    heap_caps_check_integrity_all(true); // To debug memory
+
     return instance;
 }
 

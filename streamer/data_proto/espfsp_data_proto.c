@@ -120,7 +120,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
     espfsp_data_proto_state_t next_state;
     ESP_LOGI(TAG, "Start data handling");
 
-    data_proto->state = ESPFSP_DATA_PROTO_STATE_LOOP;
+    data_proto->state = ESPFSP_DATA_PROTO_STATE_START_CHECK;
     data_proto->last_traffic = NO_SIGNAL;
     data_proto->en = 1;
 
@@ -144,6 +144,10 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
                     ESP_LOGE(TAG, "Start value not handled");
                     ret = ESP_FAIL;
                 }
+            }
+            else
+            {
+                vTaskDelay(200 / portTICK_PERIOD_MS);
             }
 
             change_state_base_ret(data_proto, next_state, ret);
@@ -190,7 +194,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
         case ESPFSP_DATA_PROTO_STATE_CONTROL:
 
             // Check if sending parameters then publish them for interested sides
-            change_state_base_ret(data_proto, ESPFSP_DATA_PROTO_STATE_SETTING, ret);
+            change_state_base_ret(data_proto, ESPFSP_DATA_PROTO_STATE_STOP_CHECK, ret);
             break;
 
         case ESPFSP_DATA_PROTO_STATE_RETURN:

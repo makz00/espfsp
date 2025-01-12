@@ -64,7 +64,7 @@ static void handle_new_connection_task(void *pvParameters)
     esp_err_t ret = espfsp_remove_host(sock);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Remove UDP server failed");
+        ESP_LOGE(TAG, "Remove connected host failed");
     }
 
     vTaskDelete(NULL);

@@ -632,14 +632,14 @@ esp_err_t espfsp_remove_host(int sock)
     int err = 0;
 
     err = shutdown(sock, 0);
-    if (err != 0)
+    if (err != 0 && errno != ENOTCONN)
     {
         ESP_LOGE(TAG, "Socket unable to shutdown: errno %d", errno);
         return ESP_FAIL;
     }
 
     err = close(sock);
-    if (err != 0)
+    if (err != 0 && errno != ENOTCONN)
     {
         ESP_LOGE(TAG, "Socket unable to close: errno %d", errno);
         return ESP_FAIL;

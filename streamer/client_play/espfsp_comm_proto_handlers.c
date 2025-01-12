@@ -79,3 +79,17 @@ esp_err_t espfsp_client_play_resp_session_ack_handler(
 
     return ESP_OK;
 }
+
+esp_err_t espfsp_client_play_connection_stop(espfsp_comm_proto_t *comm_proto, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) ctx;
+
+    espfsp_comm_proto_req_session_init_message_t msg = {
+        .client_type = ESPFSP_COMM_REQ_CLIENT_PLAY,
+    };
+
+    ret = espfsp_comm_proto_session_init(comm_proto, &msg);
+
+    return ret;
+}
