@@ -128,6 +128,7 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
 
     instance->session_data.session_id = -1;
     instance->session_data.active = false;
+    instance->session_data.stream_started = false;
 
     instance->session_data.mutex = NULL;
     instance->session_data.mutex = xSemaphoreCreateBinary();
@@ -350,6 +351,8 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
         vTaskDelay(SERVER_WAIT_TIMEOUT);
     }
 
+    instance->session_data.stream_started = true;
+
     msg.session_id = instance->session_data.session_id;
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
@@ -388,6 +391,8 @@ esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler)
         ESP_LOGE(TAG, "Session with server has not been established");
         return ESP_FAIL;
     }
+
+    instance->session_data.stream_started = false;
 
     msg.session_id = instance->session_data.session_id;
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)

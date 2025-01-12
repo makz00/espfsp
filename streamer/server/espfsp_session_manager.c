@@ -280,6 +280,7 @@ esp_err_t espfsp_session_manager_activate_session(
     if (data != NULL && data->session_id == UNACTIVE_SESSION_ID)
     {
         data->session_id = session_manager->config->session_id_gen(data->type);
+        data->stream_started = false;
         snprintf(data->name, sizeof(data->name), "CLIENT_NAME-%ld", data->session_id);
     }
     else
@@ -327,6 +328,63 @@ esp_err_t espfsp_session_manager_get_session_name(
     return ESP_OK;
 }
 
+esp_err_t espfsp_session_manager_get_session_type(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_session_manager_session_type_t *session_type)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
+    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
+    {
+        *session_type = data->type;
+    }
+    {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Get session type failed");
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t espfsp_session_manager_set_stream_state(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    bool stream_started)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
+    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
+    {
+        data->stream_started = stream_started;
+    }
+    {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Set stream state failed");
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t espfsp_session_manager_get_stream_state(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    bool *stream_started)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
+    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
+    {
+        *stream_started = data->stream_started;
+    }
+    {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Get stream state failed");
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t espfsp_session_manager_deactivate_session(
     espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto)
 {
@@ -334,6 +392,17 @@ esp_err_t espfsp_session_manager_deactivate_session(
     espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
     if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
     {
+        if (session_manager->primary_client_play_session_data != NULL
+            && session_manager->primary_client_play_session_data->comm_proto == comm_proto)
+        {
+            session_manager->primary_client_play_session_data = NULL;
+        }
+        if (session_manager->primary_client_push_session_data != NULL
+            && session_manager->primary_client_push_session_data->comm_proto == comm_proto)
+        {
+            session_manager->primary_client_push_session_data = NULL;
+        }
+
         data->session_id = UNACTIVE_SESSION_ID;
     }
     else
@@ -353,22 +422,47 @@ esp_err_t espfsp_session_manager_get_primary_session(
     esp_err_t ret = ESP_OK;
     *comm_proto = NULL;
 
-    switch (type)
+    // Only test purpose - BEG
+    // We assume that any activated session is primary
+    espfsp_server_session_manager_data_t *data_set = NULL;
+    int data_set_count = 0;
+    ret = get_data_set_info(session_manager, type, &data_set, &data_set_count);
+    if (ret == ESP_OK)
     {
-    case ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH:
-        *comm_proto = session_manager->primary_client_push_session_data->comm_proto;
-        break;
-
-    case ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PLAY:
-        *comm_proto = session_manager->primary_client_play_session_data->comm_proto;
-        break;
-
-    default:
-        ret = ESP_FAIL;
-        ESP_LOGE(TAG, "Ger primary session failed. Type not handled");
+        for (int i = 0; i < data_set_count; i++)
+        {
+            espfsp_server_session_manager_data_t *data = &data_set[i];
+            if (data->active && data->session_id != UNACTIVE_SESSION_ID)
+            {
+                *comm_proto = data->comm_proto;
+                return ret;
+            }
+        }
     }
+    // Only test purpose - END
 
-    return ESP_OK;
+    // switch (type)
+    // {
+    // case ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH:
+    //     if (session_manager->primary_client_push_session_data != NULL)
+    //     {
+    //         *comm_proto = session_manager->primary_client_push_session_data->comm_proto;
+    //     }
+    //     break;
+
+    // case ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PLAY:
+    //     if (session_manager->primary_client_play_session_data != NULL)
+    //     {
+    //         *comm_proto = session_manager->primary_client_play_session_data->comm_proto;
+    //     }
+    //     break;
+
+    // default:
+    //     ret = ESP_FAIL;
+    //     ESP_LOGE(TAG, "Ger primary session failed. Type not handled");
+    // }
+
+    return ret;
 }
 
 esp_err_t espfsp_session_manager_set_primary_session(

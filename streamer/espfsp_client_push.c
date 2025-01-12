@@ -125,6 +125,7 @@ static espfsp_client_push_instance_t *create_new_client_push(const espfsp_client
 
     instance->session_data.session_id = -1;
     instance->session_data.active = false;
+    instance->session_data.camera_started = false;
 
     esp_err_t err = ESP_OK;
 

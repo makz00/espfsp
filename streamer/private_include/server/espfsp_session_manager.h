@@ -38,6 +38,7 @@ typedef struct
     uint32_t session_id;
     bool active;
     char name[ESPFSP_SERVER_SESSION_NAME_MAX_LEN];
+    bool stream_started;
 } espfsp_server_session_manager_data_t;
 
 typedef uint32_t (*__espfsp_session_manager_session_id_generator)(espfsp_session_manager_session_type_t type);
@@ -92,6 +93,18 @@ esp_err_t espfsp_session_manager_get_session_id(
     espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto, uint32_t *session_id);
 esp_err_t espfsp_session_manager_get_session_name(
     espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto, char **session_name);
+esp_err_t espfsp_session_manager_get_session_type(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_session_manager_session_type_t *session_type);
+esp_err_t espfsp_session_manager_set_stream_state(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    bool stream_started);
+esp_err_t espfsp_session_manager_get_stream_state(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    bool *stream_started);
 esp_err_t espfsp_session_manager_deactivate_session(
     espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto);
 

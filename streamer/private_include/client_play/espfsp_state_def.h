@@ -20,6 +20,7 @@ typedef struct {
     SemaphoreHandle_t mutex;
     uint32_t session_id;
     bool active;
+    bool stream_started;
 } espfsp_client_play_session_data_t;
 
 typedef struct

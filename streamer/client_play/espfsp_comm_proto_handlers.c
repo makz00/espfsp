@@ -89,7 +89,28 @@ esp_err_t espfsp_client_play_connection_stop(espfsp_comm_proto_t *comm_proto, vo
         .client_type = ESPFSP_COMM_REQ_CLIENT_PLAY,
     };
 
-    ret = espfsp_comm_proto_session_init(comm_proto, &msg);
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return ESP_FAIL;
+    }
+    if (instance->session_data.stream_started == true)
+    {
+        ret = espfsp_data_proto_stop(&instance->data_proto);
+    }
+    if (ret == ESP_OK)
+    {
+        instance->session_data.stream_started = false;
+    }
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
+    }
+    if (ret == ESP_OK)
+    {
+        ret = espfsp_comm_proto_session_init(comm_proto, &msg);
+    }
 
     return ret;
 }

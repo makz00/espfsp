@@ -41,12 +41,16 @@ esp_err_t espfsp_client_push_req_start_stream_handler(espfsp_comm_proto_t *comm_
     {
         ret = ESP_FAIL;
     }
-    if (ret == ESP_OK)
+    if (ret == ESP_OK && instance->session_data.camera_started == false)
     {
         ret = instance->config->cb.start_cam(&instance->config->cam_config, &instance->config->frame_config);
         if (ret == ESP_OK)
         {
             ret = espfsp_data_proto_start(&instance->data_proto);
+        }
+        if (ret == ESP_OK)
+        {
+            instance->session_data.camera_started = true;
         }
     }
 
@@ -63,12 +67,16 @@ esp_err_t espfsp_client_push_req_stop_stream_handler(espfsp_comm_proto_t *comm_p
     {
         ret = ESP_FAIL;
     }
-    if (ret == ESP_OK)
+    if (ret == ESP_OK && instance->session_data.camera_started == true)
     {
         ret = espfsp_data_proto_stop(&instance->data_proto);
         if (ret == ESP_OK)
         {
             ret = instance->config->cb.stop_cam();
+        }
+        if (ret == ESP_OK)
+        {
+            instance->session_data.camera_started = false;
         }
     }
 
@@ -103,7 +111,20 @@ esp_err_t espfsp_client_push_connection_stop(espfsp_comm_proto_t *comm_proto, vo
         .client_type = ESPFSP_COMM_REQ_CLIENT_PUSH,
     };
 
-    ret = espfsp_comm_proto_session_init(comm_proto, &msg);
+    if (instance->session_data.camera_started == true)
+    {
+        ret = espfsp_data_proto_stop(&instance->data_proto);
+        if (ret == ESP_OK)
+        {
+            ret = instance->config->cb.stop_cam();
+        }
+
+        instance->session_data.camera_started = false;
+    }
+    if (ret == ESP_OK)
+    {
+        ret = espfsp_comm_proto_session_init(comm_proto, &msg);
+    }
 
     return ret;
 }

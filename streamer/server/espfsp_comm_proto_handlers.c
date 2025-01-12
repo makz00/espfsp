@@ -85,6 +85,16 @@ esp_err_t espfsp_server_req_start_stream_handler(espfsp_comm_proto_t *comm_proto
             ret = espfsp_session_manager_get_session_id(
                 session_manager, primary_push_comm_proto, &primary_push_session_id);
         }
+        if (ret == ESP_OK && primary_push_comm_proto != NULL && primary_push_session_id != -123)
+        {
+            bool stream_started = true;
+
+            ret = espfsp_session_manager_set_stream_state(session_manager, primary_push_comm_proto, stream_started);
+            if (ret == ESP_OK)
+            {
+                ret = espfsp_session_manager_set_stream_state(session_manager, comm_proto, stream_started);
+            }
+        }
 
         espfsp_session_manager_release(session_manager);
     }
@@ -126,6 +136,16 @@ esp_err_t espfsp_server_req_stop_stream_handler(espfsp_comm_proto_t *comm_proto,
             ret = espfsp_session_manager_get_session_id(
                 session_manager, primary_push_comm_proto, &primary_push_session_id);
         }
+        if (ret == ESP_OK && primary_push_comm_proto != NULL && primary_push_session_id != -123)
+        {
+            bool stream_started = false;
+
+            ret = espfsp_session_manager_set_stream_state(session_manager, primary_push_comm_proto, stream_started);
+            if (ret == ESP_OK)
+            {
+                ret = espfsp_session_manager_set_stream_state(session_manager, comm_proto, stream_started);
+            }
+        }
 
         espfsp_session_manager_release(session_manager);
     }
@@ -152,11 +172,44 @@ esp_err_t espfsp_server_connection_stop(espfsp_comm_proto_t *comm_proto, void *c
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
     espfsp_session_manager_t *session_manager = &instance->session_manager;
 
+    bool stream_started = false;
+
     ret = espfsp_session_manager_take(session_manager);
     if (ret == ESP_OK)
     {
-        ret = espfsp_session_manager_deactivate_session(session_manager, comm_proto);
+        espfsp_session_manager_session_type_t session_type;
+        ret = espfsp_session_manager_get_session_type(session_manager, comm_proto, &session_type);
+        if (ret == ESP_OK)
+        {
+            espfsp_comm_proto_t *given_type_primary_session = NULL;
+            ret = espfsp_session_manager_get_primary_session(
+                session_manager, session_type, &given_type_primary_session);
+            if (given_type_primary_session != NULL && given_type_primary_session == comm_proto)
+            {
+                if (ret == ESP_OK)
+                {
+                    ret = espfsp_session_manager_get_stream_state(session_manager, comm_proto, &stream_started);
+                }
+                if (ret == ESP_OK)
+                {
+                    ret = espfsp_session_manager_get_stream_state(session_manager, comm_proto, &stream_started);
+                }
+            }
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_session_manager_deactivate_session(session_manager, comm_proto);
+        }
+
         espfsp_session_manager_release(session_manager);
+    }
+    if (ret == ESP_OK && stream_started)
+    {
+        ret = espfsp_data_proto_stop(&instance->client_push_data_proto);
+    }
+    if (ret == ESP_OK && stream_started)
+    {
+        ret = espfsp_data_proto_stop(&instance->client_play_data_proto);
     }
 
     return ret;
