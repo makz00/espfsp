@@ -647,3 +647,17 @@ esp_err_t espfsp_remove_host(int sock)
 
     return ESP_OK;
 }
+
+esp_err_t espfsp_remove_udp_host(int sock)
+{
+    int err = 0;
+
+    err = close(sock);
+    if (err != 0 && errno != ENOTCONN)
+    {
+        ESP_LOGE(TAG, "Socket unable to close: errno %d", errno);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}

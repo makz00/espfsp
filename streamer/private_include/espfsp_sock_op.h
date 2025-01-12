@@ -64,3 +64,4 @@ esp_err_t espfsp_create_udp_server(int *sock, int port);
 esp_err_t espfsp_create_udp_client(int *sock, int port, struct sockaddr_in *server_addr);
 
 esp_err_t espfsp_remove_host(int sock);
+esp_err_t espfsp_remove_udp_host(int sock);

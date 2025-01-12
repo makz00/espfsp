@@ -133,7 +133,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
             next_state = ESPFSP_DATA_PROTO_STATE_START_CHECK;
             uint8_t start_val = NO_VAL;
 
-            if (xQueueReceive(data_proto->stopQueue, &start_val, 0) == pdPASS)
+            if (xQueueReceive(data_proto->startQueue, &start_val, 0) == pdPASS)
             {
                 if (start_val == START_VAL)
                 {

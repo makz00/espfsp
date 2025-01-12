@@ -16,6 +16,8 @@
 #include "data_proto/espfsp_data_proto.h"
 #include "data_proto/espfsp_data_signal.h"
 
+static const char *TAG = "ESPFSP_DATA_PROT_SIGNAL";
+
 static esp_err_t get_last_signal(int sock, uint8_t *signal, struct sockaddr_in *addr, socklen_t *addr_len)
 {
     esp_err_t ret = ESP_OK;

@@ -46,7 +46,7 @@ void espfsp_server_data_task(void *pvParameters)
 
         ESP_LOGE(TAG, "Shut down socket and restart...");
 
-        ret = espfsp_remove_host(sock);
+        ret = espfsp_remove_udp_host(sock);
         if (ret != ESP_OK)
         {
             ESP_LOGE(TAG, "Remove UDP server failed");
