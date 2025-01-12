@@ -535,6 +535,20 @@ esp_err_t espfsp_create_tcp_client(int *sock, int client_port, struct sockaddr_i
     int opt = 1;
     setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
+    int keep_alive_opt = 1;
+
+    setsockopt(*sock, SOL_SOCKET, SO_KEEPALIVE, &keep_alive_opt, sizeof(keep_alive_opt));
+
+    int tcp_keepalive_opt = 20000; // TCP keepalive period in milliseconds
+    // int tcp_keepidle_opt = 1; // same as TCP_KEEPALIVE, but the value is in seconds
+    int tcp_keepintvl_opt = 4; // the interval between keepalive probes in seconds
+    int tcp_keepcnt_opt = 5; // number of keepalive probes before timing out
+
+    setsockopt(*sock, IPPROTO_TCP, TCP_KEEPALIVE, &tcp_keepalive_opt, sizeof(tcp_keepalive_opt));
+    // setsockopt(*sock, IPPROTO_TCP, TCP_KEEPIDLE, &tcp_keepidle_opt, sizeof(tcp_keepidle_opt));
+    setsockopt(*sock, IPPROTO_TCP, TCP_KEEPINTVL, &tcp_keepintvl_opt, sizeof(tcp_keepintvl_opt));
+    setsockopt(*sock, IPPROTO_TCP, TCP_KEEPCNT, &tcp_keepcnt_opt, sizeof(tcp_keepcnt_opt));
+
     err = bind(*sock, (struct sockaddr *)&client_addr, sizeof(client_addr));
     if (err != 0)
     {
