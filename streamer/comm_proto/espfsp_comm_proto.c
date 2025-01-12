@@ -480,3 +480,123 @@ esp_err_t espfsp_comm_proto_ack(espfsp_comm_proto_t *comm_proto, espfsp_comm_pro
         (uint8_t *) msg,
         sizeof(espfsp_comm_proto_resp_ack_message_t));
 }
+
+esp_err_t espfsp_comm_proto_cam_set_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_cam_set_params_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_REQUEST,
+        (uint8_t) ESPFSP_COMM_REQ_CAM_SET_PARAMS,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_req_cam_set_params_message_t));
+}
+
+esp_err_t espfsp_comm_proto_cam_get_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_cam_get_params_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_REQUEST,
+        (uint8_t) ESPFSP_COMM_REQ_CAM_GET_PARAMS,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_req_cam_get_params_message_t));
+}
+
+esp_err_t espfsp_comm_proto_frame_set_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_frame_set_params_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_REQUEST,
+        (uint8_t) ESPFSP_COMM_REQ_FRAME_SET_PARAMS,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_req_frame_set_params_message_t));
+}
+
+esp_err_t espfsp_comm_proto_frame_get_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_frame_get_params_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_REQUEST,
+        (uint8_t) ESPFSP_COMM_REQ_FRAME_GET_PARAMS,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_req_frame_get_params_message_t));
+}
+
+esp_err_t espfsp_comm_proto_proto_set_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_proto_set_params_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_REQUEST,
+        (uint8_t) ESPFSP_COMM_REQ_PROTO_SET_PARAMS,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_req_proto_set_params_message_t));
+}
+
+esp_err_t espfsp_comm_proto_proto_get_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_proto_get_params_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_REQUEST,
+        (uint8_t) ESPFSP_COMM_REQ_PROTO_GET_PARAMS,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_req_proto_get_params_message_t));
+}
+
+esp_err_t espfsp_comm_proto_source_set(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_source_set_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_REQUEST,
+        (uint8_t) ESPFSP_COMM_REQ_SOURCE_SET,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_req_source_set_message_t));
+}
+
+esp_err_t espfsp_comm_proto_source_get(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_source_get_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_REQUEST,
+        (uint8_t) ESPFSP_COMM_REQ_SOURCE_GET,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_req_source_get_message_t));
+}
+
+esp_err_t espfsp_comm_proto_cam_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_cam_params_resp_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_RESPONSE,
+        (uint8_t) ESPFSP_COMM_RESP_CAM_PARAMS_RESP,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_resp_cam_params_resp_message_t));
+}
+
+esp_err_t espfsp_comm_proto_farme_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_frame_params_resp_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_RESPONSE,
+        (uint8_t) ESPFSP_COMM_RESP_FRAME_PARAMS_RESP,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_resp_frame_params_resp_message_t));
+}
+
+esp_err_t espfsp_comm_proto_proto_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_proto_params_resp_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_RESPONSE,
+        (uint8_t) ESPFSP_COMM_RESP_PROTO_PARAMS_RESP,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_resp_proto_params_resp_message_t));
+}
+
+esp_err_t espfsp_comm_proto_sources(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_sources_resp_message_t *msg)
+{
+    return insert_action(
+        comm_proto,
+        ESPFSP_COMM_PROTO_MSG_RESPONSE,
+        (uint8_t) ESPFSP_COMM_RESP_SOURCES_RESP,
+        (uint8_t *) msg,
+        sizeof(espfsp_comm_resp_sources_resp_message_t));
+}

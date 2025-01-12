@@ -87,21 +87,22 @@ esp_err_t espfsp_comm_proto_session_terminate(espfsp_comm_proto_t *comm_proto, e
 esp_err_t espfsp_comm_proto_session_ping(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_req_session_ping_message_t *msg);
 esp_err_t espfsp_comm_proto_start_stream(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_req_start_stream_message_t *msg);
 esp_err_t espfsp_comm_proto_stop_stream(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_req_stop_stream_message_t *msg);
+esp_err_t espfsp_comm_proto_cam_set_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_cam_set_params_message_t *msg);
+esp_err_t espfsp_comm_proto_cam_get_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_cam_get_params_message_t *msg);
+esp_err_t espfsp_comm_proto_frame_set_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_frame_set_params_message_t *msg);
+esp_err_t espfsp_comm_proto_frame_get_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_frame_get_params_message_t *msg);
+esp_err_t espfsp_comm_proto_proto_set_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_proto_set_params_message_t *msg);
+esp_err_t espfsp_comm_proto_proto_get_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_proto_get_params_message_t *msg);
+esp_err_t espfsp_comm_proto_source_set(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_source_set_message_t *msg);
+esp_err_t espfsp_comm_proto_source_get(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_source_get_message_t *msg);
 // Actions for requests --- END
 
 // Actions for responses --- BEGIN
 esp_err_t espfsp_comm_proto_session_ack(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_session_ack_message_t *msg);
 esp_err_t espfsp_comm_proto_session_pong(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_session_pong_message_t *msg);
 esp_err_t espfsp_comm_proto_ack(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_ack_message_t *msg);
+esp_err_t espfsp_comm_proto_cam_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_cam_params_resp_message_t *msg);
+esp_err_t espfsp_comm_proto_farme_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_frame_params_resp_message_t *msg);
+esp_err_t espfsp_comm_proto_proto_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_proto_params_resp_message_t *msg);
+esp_err_t espfsp_comm_proto_sources(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_sources_resp_message_t *msg);
 // Actions for responses --- END
-
-// Additional methods --- BEGIN
-// esp_err_t espfsp_comm_proto_cam_set_params(espfsp_comm_proto_t *comm_proto, uint32_t session_id, uint16_t param_id, uint32_t value);
-// esp_err_t espfsp_comm_proto_cam_get_params(espfsp_comm_proto_t *comm_proto, uint32_t session_id, uint16_t param_id);
-// esp_err_t espfsp_comm_proto_frame_set_params(espfsp_comm_proto_t *comm_proto, uint32_t session_id, uint16_t param_id, uint32_t value);
-// esp_err_t espfsp_comm_proto_frame_get_params(espfsp_comm_proto_t *comm_proto, uint32_t session_id, uint16_t param_id);
-// esp_err_t espfsp_comm_proto_proto_set_params(espfsp_comm_proto_t *comm_proto, uint32_t session_id, uint16_t param_id, uint32_t value);
-// esp_err_t espfsp_comm_proto_proto_get_params(espfsp_comm_proto_t *comm_proto, uint32_t session_id, uint16_t param_id);
-// esp_err_t espfsp_comm_proto_source_set(espfsp_comm_proto_t *comm_proto, uint32_t session_id, char source_id[16]);
-// esp_err_t espfsp_comm_proto_source_get(espfsp_comm_proto_t *comm_proto, uint32_t session_id);
-// Additional methods --- END
