@@ -339,6 +339,7 @@ esp_err_t espfsp_session_manager_get_session_type(
     {
         *session_type = data->type;
     }
+    else
     {
         ret = ESP_FAIL;
         ESP_LOGE(TAG, "Get session type failed");
@@ -358,6 +359,7 @@ esp_err_t espfsp_session_manager_set_stream_state(
     {
         data->stream_started = stream_started;
     }
+    else
     {
         ret = ESP_FAIL;
         ESP_LOGE(TAG, "Set stream state failed");
@@ -377,6 +379,7 @@ esp_err_t espfsp_session_manager_get_stream_state(
     {
         *stream_started = data->stream_started;
     }
+    else
     {
         ret = ESP_FAIL;
         ESP_LOGE(TAG, "Get stream state failed");

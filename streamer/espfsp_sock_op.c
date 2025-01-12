@@ -418,7 +418,7 @@ esp_err_t espfsp_receive_no_block_state(
 {
     struct timeval timeout;
     timeout.tv_sec = 0;
-    timeout.tv_usec = 0;
+    timeout.tv_usec = 10000;
 
     return receive_block_state(sock, rx_buffer, rx_buffer_len, received, &timeout, conn_state);
 }

@@ -401,7 +401,7 @@ esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler)
         return ESP_FAIL;
     }
 
-    ret = espfsp_data_proto_start(&instance->data_proto);
+    ret = espfsp_data_proto_stop(&instance->data_proto);
     if (ret != ESP_OK)
     {
         return ret;

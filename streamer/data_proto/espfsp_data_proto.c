@@ -108,7 +108,7 @@ static esp_err_t handle_data_proto(espfsp_data_proto_t *data_proto, int sock)
 static void change_state_base_ret(espfsp_data_proto_t *data_proto, espfsp_data_proto_state_t next_state, esp_err_t ret_val)
 {
     if (ret_val != ESP_OK)
-        data_proto->state = ESPFSP_COMM_PROTO_STATE_ERROR;
+        data_proto->state = ESPFSP_DATA_PROTO_STATE_ERROR;
     else
         data_proto->state = next_state;
 }
@@ -137,6 +137,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
             {
                 if (start_val == START_VAL)
                 {
+                    ESP_LOGI(TAG, "Start has bean read!!!"); // Debug only
                     next_state = ESPFSP_DATA_PROTO_STATE_STOP_CHECK;
                 }
                 else
