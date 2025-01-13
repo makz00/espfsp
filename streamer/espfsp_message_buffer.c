@@ -222,9 +222,10 @@ espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buf
     BaseType_t xStatus = xQueueReceive(receiver_buffer->frameQueue, &receiver_buffer->s_ass, timeout_ms / portTICK_PERIOD_MS);
     if (xStatus != pdTRUE)
     {
-        ESP_LOGE(TAG, "Cannot read assembly from queue");
         return NULL;
     }
+
+    ESP_LOGI(TAG, "FB successfully received");
 
     receiver_buffer->s_fb->len = receiver_buffer->s_ass->len;
     receiver_buffer->s_fb->width = receiver_buffer->s_ass->width;

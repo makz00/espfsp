@@ -121,10 +121,6 @@ esp_err_t espfsp_client_push_connection_stop(espfsp_comm_proto_t *comm_proto, vo
 
         instance->session_data.camera_started = false;
     }
-    if (ret == ESP_OK)
-    {
-        ret = espfsp_comm_proto_session_init(comm_proto, &msg);
-    }
 
     return ret;
 }

@@ -80,13 +80,11 @@ static esp_err_t handle_data_proto(espfsp_data_proto_t *data_proto, int sock)
     {
     case ESPFSP_DATA_PROTO_TYPE_SEND:
 
-        ESP_LOGI(TAG, "Sending..."); // Debug only
         ret = espfsp_data_proto_handle_send(data_proto, sock);
         break;
 
     case ESPFSP_DATA_PROTO_TYPE_RECV:
 
-        ESP_LOGI(TAG, "Receiving..."); // Debug only
         ret = espfsp_data_proto_handle_recv(data_proto, sock);
         break;
 
@@ -141,7 +139,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
                 {
                     started = false;
                     ESP_LOGI(TAG, "Stop has been read!!!"); // Debug only
-                    next_state = ESPFSP_DATA_PROTO_STATE_RETURN;
+                    next_state = ESPFSP_DATA_PROTO_STATE_START_STOP_CHECK;
                 }
                 else
                 {

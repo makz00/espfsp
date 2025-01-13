@@ -40,6 +40,7 @@ static esp_err_t start_session_and_control_task(espfsp_client_play_instance_t * 
     }
 
     data->comm_proto = &instance->comm_proto;
+    data->client_type = ESPFSP_COMM_REQ_CLIENT_PLAY;
     data->local_port = instance->config->local.control_port;
     data->remote_port = instance->config->remote.control_port;
     data->remote_addr.addr = instance->config->remote_addr.addr;
@@ -301,7 +302,7 @@ espfsp_fb_t *espfsp_client_play_get_fb(espfsp_client_play_handler_t handler, uin
     fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer, timeout_ms);
     if (fb == NULL)
     {
-        ESP_LOGI(TAG, "Frame buffer timeout");
+        // ESP_LOGI(TAG, "Frame buffer timeout");
     }
 
     return fb;

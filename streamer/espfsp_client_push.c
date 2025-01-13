@@ -37,6 +37,7 @@ static esp_err_t start_session_and_control_task(espfsp_client_push_instance_t * 
     }
 
     data->comm_proto = &instance->comm_proto;
+    data->client_type = ESPFSP_COMM_REQ_CLIENT_PUSH;
     data->local_port = instance->config->local.control_port;
     data->remote_port = instance->config->remote.control_port;
     data->remote_addr.addr = instance->config->remote_addr.addr;

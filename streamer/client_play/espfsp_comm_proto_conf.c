@@ -42,11 +42,7 @@ esp_err_t espfsp_client_play_comm_protos_init(espfsp_client_play_instance_t *ins
         return ret;
     }
 
-    espfsp_comm_proto_req_session_init_message_t msg = {
-        .client_type = ESPFSP_COMM_REQ_CLIENT_PLAY,
-    };
-
-    return espfsp_comm_proto_session_init(&instance->comm_proto, &msg);
+    return ret;
 }
 
 esp_err_t espfsp_client_play_comm_protos_deinit(espfsp_client_play_instance_t *instance)

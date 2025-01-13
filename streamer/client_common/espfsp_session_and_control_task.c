@@ -21,7 +21,15 @@ static void handle_new_connection(espfsp_client_session_and_control_task_data_t 
 {
     espfsp_comm_proto_t *comm_proto = data->comm_proto;
 
-    espfsp_comm_proto_run(comm_proto, sock);
+    espfsp_comm_proto_req_session_init_message_t msg = {
+        .client_type = data->client_type,
+    };
+
+    esp_err_t err = espfsp_comm_proto_session_init(comm_proto, &msg);
+    if (err == ESP_OK)
+    {
+        espfsp_comm_proto_run(comm_proto, sock);
+    }
 }
 
 void espfsp_client_session_and_control_task(void *pvParameters)
@@ -49,7 +57,7 @@ void espfsp_client_session_and_control_task(void *pvParameters)
 
         handle_new_connection(data, sock);
 
-        ESP_LOGE(TAG, "Shut down socket and restart...");
+        ESP_LOGI(TAG, "Shut down socket and restart...");
 
         ret = espfsp_remove_host(sock);
         if (ret != ESP_OK)

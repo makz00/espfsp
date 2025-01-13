@@ -136,10 +136,6 @@ esp_err_t espfsp_client_play_connection_stop(espfsp_comm_proto_t *comm_proto, vo
         ESP_LOGE(TAG, "Cannot give semaphore");
         return ESP_FAIL;
     }
-    if (ret == ESP_OK)
-    {
-        ret = espfsp_comm_proto_session_init(comm_proto, &msg);
-    }
 
     return ret;
 }

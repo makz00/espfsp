@@ -47,7 +47,7 @@ void espfsp_client_data_task(void *pvParameters)
 
         handle_new_connection(data, sock);
 
-        ESP_LOGE(TAG, "Shut down socket and restart...");
+        ESP_LOGI(TAG, "Shut down socket and restart...");
 
         ret = espfsp_remove_udp_host(sock);
         if (ret != ESP_OK)
