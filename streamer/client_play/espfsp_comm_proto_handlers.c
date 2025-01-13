@@ -44,6 +44,35 @@ esp_err_t espfsp_client_play_req_session_terminate_handler(
     return ESP_OK;
 }
 
+esp_err_t espfsp_client_play_req_stop_stream_handler(
+    espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_comm_proto_req_session_terminate_message_t *msg = (espfsp_comm_proto_req_session_terminate_message_t *) msg_content;
+    espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) ctx;
+
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return ESP_FAIL;
+    }
+    if (instance->session_data.stream_started == true)
+    {
+        ret = espfsp_data_proto_stop(&instance->data_proto);
+    }
+    if (ret == ESP_OK)
+    {
+        instance->session_data.stream_started = false;
+    }
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t espfsp_client_play_resp_session_ack_handler(
     espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {

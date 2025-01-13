@@ -89,6 +89,8 @@ esp_err_t espfsp_session_manager_return_comm_proto(
 // Session management functions for Communication Protocol
 esp_err_t espfsp_session_manager_activate_session(
     espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto);
+esp_err_t espfsp_session_manager_deactivate_session(
+    espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto);
 esp_err_t espfsp_session_manager_get_session_id(
     espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto, uint32_t *session_id);
 esp_err_t espfsp_session_manager_get_session_name(
@@ -105,8 +107,6 @@ esp_err_t espfsp_session_manager_get_stream_state(
     espfsp_session_manager_t *session_manager,
     espfsp_comm_proto_t *comm_proto,
     bool *stream_started);
-esp_err_t espfsp_session_manager_deactivate_session(
-    espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto);
 
 // General management of Session Manager
 esp_err_t espfsp_session_manager_get_primary_session(

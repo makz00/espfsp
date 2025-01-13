@@ -292,6 +292,33 @@ esp_err_t espfsp_session_manager_activate_session(
     return ret;
 }
 
+esp_err_t espfsp_session_manager_deactivate_session(
+    espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
+    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
+    {
+        if (session_manager->primary_client_play_session_data == data)
+        {
+            session_manager->primary_client_play_session_data = NULL;
+        }
+        if (session_manager->primary_client_push_session_data == data)
+        {
+            session_manager->primary_client_push_session_data = NULL;
+        }
+
+        data->session_id = UNACTIVE_SESSION_ID;
+    }
+    else
+    {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Session dectivation failed");
+    }
+
+    return ret;
+}
+
 esp_err_t espfsp_session_manager_get_session_id(
     espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto, uint32_t *session_id)
 {
@@ -388,35 +415,6 @@ esp_err_t espfsp_session_manager_get_stream_state(
     return ESP_OK;
 }
 
-esp_err_t espfsp_session_manager_deactivate_session(
-    espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto)
-{
-    esp_err_t ret = ESP_OK;
-    espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
-    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
-    {
-        if (session_manager->primary_client_play_session_data != NULL
-            && session_manager->primary_client_play_session_data->comm_proto == comm_proto)
-        {
-            session_manager->primary_client_play_session_data = NULL;
-        }
-        if (session_manager->primary_client_push_session_data != NULL
-            && session_manager->primary_client_push_session_data->comm_proto == comm_proto)
-        {
-            session_manager->primary_client_push_session_data = NULL;
-        }
-
-        data->session_id = UNACTIVE_SESSION_ID;
-    }
-    else
-    {
-        ret = ESP_FAIL;
-        ESP_LOGE(TAG, "Session dectivation failed");
-    }
-
-    return ret;
-}
-
 esp_err_t espfsp_session_manager_get_primary_session(
     espfsp_session_manager_t *session_manager,
     espfsp_session_manager_session_type_t type,
@@ -425,7 +423,7 @@ esp_err_t espfsp_session_manager_get_primary_session(
     esp_err_t ret = ESP_OK;
     *comm_proto = NULL;
 
-    // Only test purpose - BEG
+    // Temporary solution - BEG
     // We assume that any activated session is primary
     espfsp_server_session_manager_data_t *data_set = NULL;
     int data_set_count = 0;
@@ -442,7 +440,7 @@ esp_err_t espfsp_session_manager_get_primary_session(
             }
         }
     }
-    // Only test purpose - END
+    // Temporary solution - END
 
     // switch (type)
     // {
