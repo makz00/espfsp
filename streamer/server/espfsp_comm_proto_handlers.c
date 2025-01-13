@@ -89,7 +89,7 @@ static esp_err_t handle_client_play_session_stream(
         if (ret == ESP_OK && play_session_id == received_session_id)
         {
             ret = espfsp_session_manager_get_primary_session(
-                session_manager, ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH, *primary_push_comm_proto);
+                session_manager, ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH, primary_push_comm_proto);
         }
         if (ret == ESP_OK && *primary_push_comm_proto != NULL)
         {

@@ -18,8 +18,6 @@
 #include "espfsp_message_buffer.h"
 #include "espfsp_message_defs.h"
 
-#define FB_GET_TIMEOUT (4000 / portTICK_PERIOD_MS)
-
 static const char *TAG = "ESPFSP_MESSAGE_BUFFER";
 
 static bool is_assembly_producer_owner(const espfsp_message_assembly_t *assembly)
@@ -219,9 +217,9 @@ esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer)
     return ESP_OK;
 }
 
-espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer)
+espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer, uint32_t timeout_ms)
 {
-    BaseType_t xStatus = xQueueReceive(receiver_buffer->frameQueue, &receiver_buffer->s_ass, FB_GET_TIMEOUT);
+    BaseType_t xStatus = xQueueReceive(receiver_buffer->frameQueue, &receiver_buffer->s_ass, timeout_ms / portTICK_PERIOD_MS);
     if (xStatus != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot read assembly from queue");

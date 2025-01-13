@@ -293,15 +293,15 @@ void espfsp_client_play_deinit(espfsp_client_play_handler_t handler)
     }
 }
 
-espfsp_fb_t *espfsp_client_play_get_fb(espfsp_client_play_handler_t handler)
+espfsp_fb_t *espfsp_client_play_get_fb(espfsp_client_play_handler_t handler, uint32_t timeout_ms)
 {
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
 
     espfsp_fb_t *fb = NULL;
-    fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer);
+    fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer, timeout_ms);
     if (fb == NULL)
     {
-        ESP_LOGE(TAG, "Frame buffer get failed");
+        ESP_LOGI(TAG, "Frame buffer timeout");
     }
 
     return fb;

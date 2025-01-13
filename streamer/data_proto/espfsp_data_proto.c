@@ -80,11 +80,13 @@ static esp_err_t handle_data_proto(espfsp_data_proto_t *data_proto, int sock)
     {
     case ESPFSP_DATA_PROTO_TYPE_SEND:
 
+        ESP_LOGI(TAG, "Sending..."); // Debug only
         ret = espfsp_data_proto_handle_send(data_proto, sock);
         break;
 
     case ESPFSP_DATA_PROTO_TYPE_RECV:
 
+        ESP_LOGI(TAG, "Receiving..."); // Debug only
         ret = espfsp_data_proto_handle_recv(data_proto, sock);
         break;
 
@@ -116,6 +118,8 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
     data_proto->last_traffic = NO_SIGNAL;
     data_proto->en = 1;
 
+    bool started = false;
+
     while (data_proto->en)
     {
         switch (data_proto->state)
@@ -129,11 +133,13 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
             {
                 if (queue_val == START_VAL)
                 {
+                    started = true;
                     ESP_LOGI(TAG, "Start has been read!!!"); // Debug only
                     next_state = ESPFSP_DATA_PROTO_STATE_SETTING;
                 }
                 else if (queue_val == STOP_VAL)
                 {
+                    started = false;
                     ESP_LOGI(TAG, "Stop has been read!!!"); // Debug only
                     next_state = ESPFSP_DATA_PROTO_STATE_RETURN;
                 }
@@ -142,6 +148,10 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
                     ESP_LOGE(TAG, "Start value not handled");
                     ret = ESP_FAIL;
                 }
+            }
+            else if (started)
+            {
+                next_state = ESPFSP_DATA_PROTO_STATE_SETTING;
             }
             else
             {

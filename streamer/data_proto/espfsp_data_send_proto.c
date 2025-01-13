@@ -30,21 +30,24 @@ static esp_err_t send_fb(espfsp_data_proto_t *data_proto, int sock, espfsp_fb_t 
     return ret;
 }
 
-static esp_err_t get_fb(espfsp_data_proto_t *data_proto, espfsp_fb_t *send_fb)
+static esp_err_t get_fb(
+    espfsp_data_proto_t *data_proto, espfsp_fb_t *send_fb, espfsp_data_proto_send_frame_state_t *frame_state)
 {
     // Potentially send_frame_callback() could block for some time to wait for FB as
     // - FB can be taken from camera directly OR
     // - FB can be taken from Receiver Buffer (waits for frames from internet)
     // depending on configuration.
-    return data_proto->config->send_frame_callback(send_fb, data_proto->config->send_frame_ctx);
+    // In order to not block on some function, it shall return after some time in order to not trigger WD.
+    return data_proto->config->send_frame_callback(send_fb, data_proto->config->send_frame_ctx, frame_state);
 }
 
 esp_err_t espfsp_data_proto_handle_send(espfsp_data_proto_t *data_proto, int sock)
 {
     esp_err_t ret = ESP_OK;
+    espfsp_data_proto_send_frame_state_t frame_state = ESPFSP_DATA_PROTO_FRAME_NOT_OBTAINED;
 
-    ret = get_fb(data_proto, data_proto->config->send_fb);
-    if (ret != ESP_OK)
+    ret = get_fb(data_proto, data_proto->config->send_fb, &frame_state);
+    if (ret != ESP_OK || frame_state == ESPFSP_DATA_PROTO_FRAME_NOT_OBTAINED)
         return ret;
 
     switch (data_proto->config->mode)

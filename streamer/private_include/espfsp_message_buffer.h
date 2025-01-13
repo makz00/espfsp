@@ -30,7 +30,7 @@ esp_err_t espfsp_message_buffer_deinit(espfsp_receiver_buffer_t *receiver_buffer
 // Allowed to use only if no other task use receive_buffer
 esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer);
 
-espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer);
+espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer, uint32_t timeout_ms);
 esp_err_t espfsp_message_buffer_return_fb(espfsp_receiver_buffer_t *receiver_buffer);
 
 void espfsp_message_buffer_process_message(const espfsp_message_t *message, espfsp_receiver_buffer_t *instance);

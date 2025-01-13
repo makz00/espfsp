@@ -8,6 +8,9 @@
 #include "esp_err.h"
 #include "esp_log.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #include "espfsp_message_buffer.h"
 #include "server/espfsp_state_def.h"
 #include "data_proto/espfsp_data_proto.h"
@@ -16,14 +19,17 @@
 
 static const char *TAG = "ESPFSP_SERVER_DATA_PROTO_CONF";
 
-static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx)
+static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_frame_state_t *state)
 {
+    esp_err_t ret = ESP_OK;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
+    espfsp_fb_t *recv_buf_fb = NULL;
 
-    espfsp_fb_t *recv_buf_fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer);
+    recv_buf_fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer, 200);
     if (recv_buf_fb == NULL)
     {
-        return ESP_FAIL;
+        *state = ESPFSP_DATA_PROTO_FRAME_NOT_OBTAINED;
+        return ESP_OK;
     }
 
     fb->len = recv_buf_fb->len;
@@ -34,7 +40,13 @@ static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx)
     fb->timestamp.tv_usec = recv_buf_fb->timestamp.tv_usec;
     memcpy(fb->buf, recv_buf_fb->buf, recv_buf_fb->len);
 
-    return espfsp_message_buffer_return_fb(&instance->receiver_buffer);
+    ret = espfsp_message_buffer_return_fb(&instance->receiver_buffer);
+    if (ret == ESP_OK)
+    {
+        *state = ESPFSP_DATA_PROTO_FRAME_OBTAINED;
+    }
+
+    return ret;
 }
 
 esp_err_t espfsp_server_data_protos_init(espfsp_server_instance_t *instance)

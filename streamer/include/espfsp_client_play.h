@@ -34,7 +34,7 @@ espfsp_client_play_handler_t espfsp_client_play_init(const espfsp_client_play_co
 
 void espfsp_client_play_deinit(espfsp_client_play_handler_t handler);
 
-espfsp_fb_t *espfsp_client_play_get_fb(espfsp_client_play_handler_t handler);
+espfsp_fb_t *espfsp_client_play_get_fb(espfsp_client_play_handler_t handler, uint32_t timeout_ms);
 
 esp_err_t espfsp_client_play_return_fb(espfsp_client_play_handler_t handler, espfsp_fb_t *fb);
 
