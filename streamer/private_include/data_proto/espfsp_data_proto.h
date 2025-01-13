@@ -38,8 +38,7 @@ typedef enum {
 } espfsp_data_proto_mode_t;
 
 typedef enum {
-    ESPFSP_DATA_PROTO_STATE_START_CHECK,
-    ESPFSP_DATA_PROTO_STATE_STOP_CHECK,
+    ESPFSP_DATA_PROTO_STATE_START_STOP_CHECK,
     ESPFSP_DATA_PROTO_STATE_SETTING,
     ESPFSP_DATA_PROTO_STATE_LOOP,
     ESPFSP_DATA_PROTO_STATE_CONTROL,
@@ -63,8 +62,7 @@ typedef struct {
     espfsp_data_proto_config_t *config;
     espfsp_data_proto_state_t state;
     uint64_t last_traffic;
-    QueueHandle_t startQueue;
-    QueueHandle_t stopQueue;
+    QueueHandle_t startStopQueue;
     QueueHandle_t settingsQueue;
     espfsp_frame_config_t frame_config;
     uint8_t en;
