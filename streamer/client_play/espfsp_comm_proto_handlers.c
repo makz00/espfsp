@@ -33,6 +33,7 @@ esp_err_t espfsp_client_play_req_session_terminate_handler(
     {
         instance->session_data.active = false;
         instance->session_data.session_id = -1;
+        instance->session_data.stream_started = false;
     }
 
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
@@ -56,13 +57,16 @@ esp_err_t espfsp_client_play_req_stop_stream_handler(
         ESP_LOGE(TAG, "Cannot take semaphore");
         return ESP_FAIL;
     }
-    if (instance->session_data.stream_started == true)
+    if (instance->session_data.active && instance->session_data.session_id == msg->session_id)
     {
-        ret = espfsp_data_proto_stop(&instance->data_proto);
-    }
-    if (ret == ESP_OK)
-    {
-        instance->session_data.stream_started = false;
+        if (instance->session_data.stream_started == true)
+        {
+            ret = espfsp_data_proto_stop(&instance->data_proto);
+        }
+        if (ret == ESP_OK)
+        {
+            instance->session_data.stream_started = false;
+        }
     }
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
@@ -86,19 +90,11 @@ esp_err_t espfsp_client_play_resp_session_ack_handler(
         return ESP_FAIL;
     }
 
-    if (instance->session_data.active)
+    if (!instance->session_data.active)
     {
-        if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
-        {
-            ESP_LOGE(TAG, "Cannot give semaphore");
-            return ESP_FAIL;
-        }
-        ESP_LOGE(TAG, "Cannot handle new session ack. There is already one session");
-        return ESP_FAIL;
+        instance->session_data.active = true;
+        instance->session_data.session_id = msg->session_id;
     }
-
-    instance->session_data.active = true;
-    instance->session_data.session_id = msg->session_id;
 
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
@@ -129,6 +125,8 @@ esp_err_t espfsp_client_play_connection_stop(espfsp_comm_proto_t *comm_proto, vo
     }
     if (ret == ESP_OK)
     {
+        instance->session_data.active = false;
+        instance->session_data.session_id = -1;
         instance->session_data.stream_started = false;
     }
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)

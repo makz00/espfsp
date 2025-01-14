@@ -17,8 +17,8 @@
 
 typedef struct {
     uint32_t session_id;
-    bool active;
-    bool camera_started;
+    bool active;            // Session initiated
+    bool camera_started;    // Frame streaming started
 } espfsp_client_push_session_data_t;
 
 typedef struct
