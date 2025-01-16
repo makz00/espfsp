@@ -157,7 +157,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
             }
             else
             {
-                taskYIELD();
+                vTaskDelay(pdMS_TO_TICKS(10));
             }
 
             change_state_base_ret(data_proto, next_state, ret);

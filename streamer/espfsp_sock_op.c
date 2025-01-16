@@ -125,8 +125,8 @@ esp_err_t espfsp_send_whole_fb_within(int sock, espfsp_fb_t *fb, uint64_t time_u
     uint32_t time_to_wait_us_per_msg = (uint32_t) (time_us / message.msg_total);
     uint32_t acc_time_to_wait_us = 0UL;
 
-    // const TickType_t xDelayMs = pdMS_TO_TICKS(time_ms / message.msg_total);
-    // ESP_LOGI(TAG, "MSG deyl is: %lld, ticks: %ld", time_ms / message.msg_total, xDelayMs);
+    // ESP_LOGI(TAG, "Delay per msg: %ldus", time_to_wait_us_per_msg);
+    // ESP_LOGI(TAG, "Ticks len: %ldus", portTICK_PERIOD_US);
 
     for (size_t i = 0; i < fb->len; i += MESSAGE_BUFFER_SIZE)
     {
@@ -146,8 +146,9 @@ esp_err_t espfsp_send_whole_fb_within(int sock, espfsp_fb_t *fb, uint64_t time_u
         acc_time_to_wait_us += time_to_wait_us_per_msg;
         if (portTICK_PERIOD_US < acc_time_to_wait_us)
         {
+            TickType_t ticks_to_delay = acc_time_to_wait_us / portTICK_PERIOD_US;
             acc_time_to_wait_us = acc_time_to_wait_us % portTICK_PERIOD_US;
-            vTaskDelay(acc_time_to_wait_us / portTICK_PERIOD_US);
+            vTaskDelay(ticks_to_delay);
         }
     }
 
@@ -457,7 +458,7 @@ esp_err_t espfsp_receive_no_block_state(
 {
     struct timeval timeout;
     timeout.tv_sec = 0;
-    timeout.tv_usec = 10000;
+    timeout.tv_usec = 0;
 
     return receive_block_state(sock, rx_buffer, rx_buffer_len, received, &timeout, conn_state);
 }
