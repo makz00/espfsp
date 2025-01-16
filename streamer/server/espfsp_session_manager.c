@@ -282,6 +282,10 @@ esp_err_t espfsp_session_manager_activate_session(
         data->session_id = session_manager->config->session_id_gen(data->type);
         data->stream_started = false;
         snprintf(data->name, sizeof(data->name), "CLIENT_NAME-%ld", data->session_id);
+        memcpy(
+            &data->frame_config,
+            &session_manager->config->default_frame_config,
+            sizeof(espfsp_frame_config_t));
     }
     else
     {
@@ -338,13 +342,14 @@ esp_err_t espfsp_session_manager_get_session_id(
 }
 
 esp_err_t espfsp_session_manager_get_session_name(
-    espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto, char **session_name)
+    espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto, char session_name[30])
 {
     esp_err_t ret = ESP_OK;
     espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
     if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
     {
-        *session_name = data->name;
+        // *session_name = data->name;
+        memcpy(session_name, data->name, ESPFSP_SERVER_SESSION_NAME_MAX_LEN);
     }
     else
     {
@@ -415,6 +420,46 @@ esp_err_t espfsp_session_manager_get_stream_state(
     return ESP_OK;
 }
 
+esp_err_t espfsp_session_manager_get_frame_config(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_frame_config_t *frame_config)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
+    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
+    {
+        memcpy(frame_config, &data->frame_config, sizeof(espfsp_frame_config_t));
+    }
+    else
+    {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Get frame config failed");
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t espfsp_session_manager_set_frame_config(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_frame_config_t *frame_config)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
+    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
+    {
+        memcpy(&data->frame_config, frame_config, sizeof(espfsp_frame_config_t));
+    }
+    else
+    {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Set frame config failed");
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t espfsp_session_manager_get_primary_session(
     espfsp_session_manager_t *session_manager,
     espfsp_session_manager_session_type_t type,
@@ -423,45 +468,26 @@ esp_err_t espfsp_session_manager_get_primary_session(
     esp_err_t ret = ESP_OK;
     *comm_proto = NULL;
 
-    // Temporary solution - BEG
-    // We assume that any activated session is primary
-    espfsp_server_session_manager_data_t *data_set = NULL;
-    int data_set_count = 0;
-    ret = get_data_set_info(session_manager, type, &data_set, &data_set_count);
-    if (ret == ESP_OK)
+    switch (type)
     {
-        for (int i = 0; i < data_set_count; i++)
+    case ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH:
+        if (session_manager->primary_client_push_session_data != NULL)
         {
-            espfsp_server_session_manager_data_t *data = &data_set[i];
-            if (data->active && data->session_id != UNACTIVE_SESSION_ID)
-            {
-                *comm_proto = data->comm_proto;
-                return ret;
-            }
+            *comm_proto = session_manager->primary_client_push_session_data->comm_proto;
         }
+        break;
+
+    case ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PLAY:
+        if (session_manager->primary_client_play_session_data != NULL)
+        {
+            *comm_proto = session_manager->primary_client_play_session_data->comm_proto;
+        }
+        break;
+
+    default:
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Ger primary session failed. Type not handled");
     }
-    // Temporary solution - END
-
-    // switch (type)
-    // {
-    // case ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH:
-    //     if (session_manager->primary_client_push_session_data != NULL)
-    //     {
-    //         *comm_proto = session_manager->primary_client_push_session_data->comm_proto;
-    //     }
-    //     break;
-
-    // case ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PLAY:
-    //     if (session_manager->primary_client_play_session_data != NULL)
-    //     {
-    //         *comm_proto = session_manager->primary_client_play_session_data->comm_proto;
-    //     }
-    //     break;
-
-    // default:
-    //     ret = ESP_FAIL;
-    //     ESP_LOGE(TAG, "Ger primary session failed. Type not handled");
-    // }
 
     return ret;
 }
@@ -523,6 +549,42 @@ esp_err_t espfsp_session_manager_get_active_sessions(
             {
                 comm_proto_buf[*active_sessions_count] = data->comm_proto;
                 *active_sessions_count += 1;
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_session_manager_get_active_session(
+    espfsp_session_manager_t *session_manager,
+    espfsp_session_manager_session_type_t type,
+    char session_name[30],
+    espfsp_comm_proto_t **comm_proto_buf)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_session_manager_data_t *data_set = NULL;
+    int data_count = 0;
+    *comm_proto_buf = NULL;
+
+    char session_name_copy[30];
+    memcpy(session_name_copy, session_name, sizeof(session_name_copy));
+    session_name_copy[29] = '\0';
+    size_t session_name_len = strlen(session_name_copy);
+
+    ret = get_data_set_info(session_manager, type, &data_set, &data_count);
+    if (ret == ESP_OK)
+    {
+        for (int i = 0; i < data_count; i++)
+        {
+            espfsp_server_session_manager_data_t *data = &data_set[i];
+
+            if (data->active &&
+                strlen(data->name) == session_name_len &&
+                memcmp(data->name, session_name, session_name_len) == 0)
+            {
+                *comm_proto_buf = data->comm_proto;
+                break;
             }
         }
     }

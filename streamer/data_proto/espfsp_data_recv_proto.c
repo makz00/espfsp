@@ -18,18 +18,20 @@
 
 static const char *TAG = "ESPFSP_DATA_RECIVE_PROTOCOL";
 
+static struct timeval recv_timeout = {
+    .tv_sec = 0,
+    .tv_usec = MAX_TIME_US_NO_MSG_RECEIVED,
+};
+
 static esp_err_t recv_msg(espfsp_data_proto_t *data_proto, int sock)
 {
     esp_err_t ret = ESP_OK;
     char rx_buffer[sizeof(espfsp_message_t)];
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = MAX_TIME_US_NO_MSG_RECEIVED;
     int received = 0;
 
     // This function receive data that are sent with UDP, so receive 0 bytes can happen.
     // We cannot block on this call as maybe another NAT hole punch is required to receive data.
-    ret = espfsp_receive_block(sock, rx_buffer, sizeof(espfsp_message_t), &received, &timeout);
+    ret = espfsp_receive_block(sock, rx_buffer, sizeof(espfsp_message_t), &received, &recv_timeout);
     if (ret != ESP_OK)
         return ret;
 

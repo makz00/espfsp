@@ -9,6 +9,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "espfsp_params_map.h"
 #include "comm_proto/espfsp_comm_proto.h"
 #include "data_proto/espfsp_data_proto.h"
 #include "client_push/espfsp_state_def.h"
@@ -39,11 +40,6 @@ static bool is_session_camera_not_started_for_id(espfsp_client_push_session_data
 static void start_session_camera(espfsp_client_push_session_data_t *session_data)
 {
     session_data->camera_started = true;
-}
-
-static void stop_session_camera(espfsp_client_push_session_data_t *session_data)
-{
-    session_data->camera_started = false;
 }
 
 static void activ_session(espfsp_client_push_session_data_t *session_data, uint32_t received_id)
@@ -87,6 +83,10 @@ esp_err_t espfsp_client_push_req_start_stream_handler(espfsp_comm_proto_t *comm_
         ret = instance->config->cb.start_cam(&instance->config->cam_config, &instance->config->frame_config);
         if (ret == ESP_OK)
         {
+            ret = espfsp_data_proto_set_frame_params(&instance->data_proto, &instance->config->frame_config);
+        }
+        if (ret == ESP_OK)
+        {
             ret = espfsp_data_proto_start(&instance->data_proto);
         }
         if (ret == ESP_OK)
@@ -117,7 +117,7 @@ esp_err_t espfsp_client_push_req_stop_stream_handler(espfsp_comm_proto_t *comm_p
         }
         if (ret == ESP_OK)
         {
-            stop_session_camera(&instance->session_data);
+            instance->session_data.camera_started = false;
         }
     }
     else
@@ -146,6 +146,142 @@ esp_err_t espfsp_client_push_resp_session_ack_handler(espfsp_comm_proto_t *comm_
     return ret;
 }
 
+static esp_err_t set_cam_config(espfsp_cam_config_t *cam_config, uint16_t param_id, uint32_t value)
+{
+    esp_err_t ret = ESP_OK;
+
+    espfsp_params_map_cam_param_t param;
+    ret = espfsp_params_map_cam_param_get_param(param_id, &param);
+    if (ret == ESP_OK)
+    {
+        switch (param)
+        {
+        case ESPFSP_PARAM_MAP_CAM_GRAB_MODE:
+            cam_config->cam_grab_mode = (espfsp_grab_mode_t) value;
+            ESP_LOGI(TAG, "Read cam_grab_mode: %ld", value);
+            break;
+        case ESPFSP_PARAM_MAP_CAM_JPEG_QUALITY:
+            cam_config->cam_jpeg_quality = (int) value;
+            ESP_LOGI(TAG, "Read cam_jpeg_quality: %ld", value);
+            break;
+        case ESPFSP_PARAM_MAP_CAM_FB_COUNT:
+            cam_config->cam_fb_count = (int) value;
+            ESP_LOGI(TAG, "Read cam_fb_count: %ld", value);
+            break;
+        default:
+            ESP_LOGE(TAG, "Not handled cam parameter");
+            ret = ESP_FAIL;
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_client_push_req_cam_set_params_handler(
+    espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_comm_req_cam_set_params_message_t *received_msg = (espfsp_comm_req_cam_set_params_message_t *) msg_content;
+    espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
+
+    if (is_session_active_for_id(&instance->session_data, received_msg->session_id))
+    {
+        ret = set_cam_config(&instance->config->cam_config, received_msg->param_id, received_msg->value);
+        if (ret == ESP_OK)
+        {
+            ret = instance->config->cb.reconf_cam(&instance->config->cam_config);
+        }
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Received bad request for cam set params");
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_client_push_req_cam_get_params_handler(
+    espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_comm_req_cam_get_params_message_t *received_msg = (espfsp_comm_req_cam_get_params_message_t *) msg_content;
+    espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
+
+    return ret;
+}
+
+static esp_err_t set_frame_config(espfsp_frame_config_t *frame_config, uint16_t param_id, uint32_t value)
+{
+    esp_err_t ret = ESP_OK;
+
+    espfsp_params_map_frame_param_t param;
+    ret = espfsp_params_map_frame_param_get_param(param_id, &param);
+    if (ret == ESP_OK)
+    {
+        switch (param)
+        {
+        case ESPFSP_PARAM_MAP_FRAME_PIXEL_FORMAT:
+            frame_config->pixel_format = (espfsp_pixformat_t) value;
+            ESP_LOGI(TAG, "Read pixel_format: %ld", value);
+            break;
+        case ESPFSP_PARAM_MAP_FRAME_FRAME_SIZE:
+            frame_config->frame_size = (espfsp_framesize_t) value;
+            ESP_LOGI(TAG, "Read frame_size: %ld", value);
+            break;
+        case ESPFSP_PARAM_MAP_FRAME_FRAME_MAX_LEN:
+            frame_config->frame_max_len = (uint32_t) value;
+            ESP_LOGI(TAG, "Read frame_max_len: %ld", value);
+            break;
+        case ESPFSP_PARAM_MAP_FRAME_FPS:
+            frame_config->fps = (uint16_t) value;
+            ESP_LOGI(TAG, "Read fps: %ld", value);
+            break;
+        default:
+            ESP_LOGE(TAG, "Not handled frame parameter");
+            ret = ESP_FAIL;
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_client_push_req_frame_set_params_handler(
+    espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_comm_req_frame_set_params_message_t *received_msg = (espfsp_comm_req_frame_set_params_message_t *) msg_content;
+    espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
+
+    if (is_session_active_for_id(&instance->session_data, received_msg->session_id))
+    {
+        ret = set_frame_config(&instance->config->frame_config, received_msg->param_id, received_msg->value);
+        if (ret == ESP_OK)
+        {
+            ret = instance->config->cb.reconf_frame(&instance->config->frame_config);
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_data_proto_set_frame_params(&instance->data_proto, &instance->config->frame_config);
+        }
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Received bad request for frame set params");
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_client_push_req_frame_get_params_handler(
+    espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_comm_req_frame_get_params_message_t *received_msg = (espfsp_comm_req_frame_get_params_message_t *) msg_content;
+    espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
+
+    return ret;
+}
+
 esp_err_t espfsp_client_push_connection_stop(espfsp_comm_proto_t *comm_proto, void *ctx)
 {
     esp_err_t ret = ESP_OK;
@@ -162,7 +298,7 @@ esp_err_t espfsp_client_push_connection_stop(espfsp_comm_proto_t *comm_proto, vo
             }
             if (ret == ESP_OK)
             {
-                stop_session_camera(&instance->session_data);
+                instance->session_data.camera_started = false;
             }
         }
 

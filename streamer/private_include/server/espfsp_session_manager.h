@@ -10,6 +10,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "espfsp_config.h"
 #include "comm_proto/espfsp_comm_proto.h"
 
 #define ESPFSP_SERVER_SESSION_NAME_MAX_LEN 30
@@ -39,6 +40,7 @@ typedef struct
     bool active;
     char name[ESPFSP_SERVER_SESSION_NAME_MAX_LEN];
     bool stream_started;
+    espfsp_frame_config_t frame_config;
 } espfsp_server_session_manager_data_t;
 
 typedef uint32_t (*__espfsp_session_manager_session_id_generator)(espfsp_session_manager_session_type_t type);
@@ -53,6 +55,7 @@ typedef struct
     int client_push_comm_protos_count;
     int client_play_comm_protos_count;
     __espfsp_session_manager_session_id_generator session_id_gen;
+    espfsp_frame_config_t default_frame_config;
 } espfsp_server_session_manager_config_t;
 
 typedef struct
@@ -94,7 +97,7 @@ esp_err_t espfsp_session_manager_deactivate_session(
 esp_err_t espfsp_session_manager_get_session_id(
     espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto, uint32_t *session_id);
 esp_err_t espfsp_session_manager_get_session_name(
-    espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto, char **session_name);
+    espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto, char session_name[30]);
 esp_err_t espfsp_session_manager_get_session_type(
     espfsp_session_manager_t *session_manager,
     espfsp_comm_proto_t *comm_proto,
@@ -107,6 +110,14 @@ esp_err_t espfsp_session_manager_get_stream_state(
     espfsp_session_manager_t *session_manager,
     espfsp_comm_proto_t *comm_proto,
     bool *stream_started);
+esp_err_t espfsp_session_manager_get_frame_config(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_frame_config_t *frame_config);
+esp_err_t espfsp_session_manager_set_frame_config(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_frame_config_t *frame_config);
 
 // General management of Session Manager
 esp_err_t espfsp_session_manager_get_primary_session(
@@ -123,3 +134,8 @@ esp_err_t espfsp_session_manager_get_active_sessions(
     espfsp_comm_proto_t **comm_proto_buf,
     int comm_proto_buf_len,
     int *active_sessions_count);
+esp_err_t espfsp_session_manager_get_active_session(
+    espfsp_session_manager_t *session_manager,
+    espfsp_session_manager_session_type_t type,
+    char session_name[30],
+    espfsp_comm_proto_t **comm_proto_buf);

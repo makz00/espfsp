@@ -15,6 +15,8 @@
 
 typedef void * espfsp_client_play_handler_t;
 
+typedef void (*__espfsp_on_sources_cb)(const char sources_names[][30] , int sources_count);
+
 typedef struct
 {
     espfsp_task_info_t data_task_info;
@@ -48,6 +50,6 @@ esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handle
 
 esp_err_t espfsp_client_play_reconfigure_protocol_params(espfsp_client_play_handler_t handler);
 
-esp_err_t espfsp_client_play_get_sources(espfsp_client_play_handler_t handler);
+esp_err_t espfsp_client_play_get_sources(espfsp_client_play_handler_t handler, __espfsp_on_sources_cb cb);
 
-esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler);
+esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler, const char source_name[30]);

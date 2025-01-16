@@ -19,6 +19,8 @@
 #include "espfsp_sock_op.h"
 #include "espfsp_message_defs.h"
 
+#define portTICK_PERIOD_US              ( ( TickType_t ) 1000000 / configTICK_RATE_HZ )
+
 static const char *TAG = "ESPFSP_SOCK_OP";
 
 void espfsp_set_addr(struct sockaddr_in *addr, const struct esp_ip4_addr *esp_addr, int port)
@@ -105,13 +107,49 @@ esp_err_t espfsp_send_whole_fb(int sock, espfsp_fb_t *fb)
             ESP_LOGE(TAG, "Error occurred during sending FB: errno %d", errno);
             return ESP_FAIL;
         }
-
-        const TickType_t xDelayMs = pdMS_TO_TICKS(10UL);
-        vTaskDelay(xDelayMs);
     }
-    // Forced delay as receiver side cannot handle a lot of Frame Buffers in short time
-    const TickType_t xDelayMs = pdMS_TO_TICKS(50UL);
-    vTaskDelay(xDelayMs);
+
+    return ESP_OK;
+}
+
+esp_err_t espfsp_send_whole_fb_within(int sock, espfsp_fb_t *fb, uint64_t time_us)
+{
+    espfsp_message_t message = {
+        .len = fb->len,
+        .width = fb->width,
+        .height = fb->height,
+        .timestamp.tv_sec = fb->timestamp.tv_sec,
+        .timestamp.tv_usec = fb->timestamp.tv_usec,
+        .msg_total = (fb->len / MESSAGE_BUFFER_SIZE) + (fb->len % MESSAGE_BUFFER_SIZE > 0 ? 1 : 0)};
+
+    uint32_t time_to_wait_us_per_msg = (uint32_t) (time_us / message.msg_total);
+    uint32_t acc_time_to_wait_us = 0UL;
+
+    // const TickType_t xDelayMs = pdMS_TO_TICKS(time_ms / message.msg_total);
+    // ESP_LOGI(TAG, "MSG deyl is: %lld, ticks: %ld", time_ms / message.msg_total, xDelayMs);
+
+    for (size_t i = 0; i < fb->len; i += MESSAGE_BUFFER_SIZE)
+    {
+        int bytes_to_send = i + MESSAGE_BUFFER_SIZE <= fb->len ? MESSAGE_BUFFER_SIZE : fb->len - i;
+
+        message.msg_number = i / MESSAGE_BUFFER_SIZE;
+        message.msg_len = bytes_to_send;
+        memcpy(message.buf, fb->buf + i, bytes_to_send);
+
+        int err = send_all(sock, (u_int8_t *)&message, sizeof(espfsp_message_t));
+        if (err < 0)
+        {
+            ESP_LOGE(TAG, "Error occurred during sending FB: errno %d", errno);
+            return ESP_FAIL;
+        }
+
+        acc_time_to_wait_us += time_to_wait_us_per_msg;
+        if (portTICK_PERIOD_US < acc_time_to_wait_us)
+        {
+            acc_time_to_wait_us = acc_time_to_wait_us % portTICK_PERIOD_US;
+            vTaskDelay(acc_time_to_wait_us / portTICK_PERIOD_US);
+        }
+    }
 
     return ESP_OK;
 }
@@ -141,6 +179,7 @@ esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr_in 
             return ESP_FAIL;
         }
 
+        // Forced delay as receiver side cannot handle a lot of Frame Buffers in short time
         const TickType_t xDelayMs = pdMS_TO_TICKS(10UL);
         vTaskDelay(xDelayMs);
     }
@@ -453,6 +492,12 @@ esp_err_t espfsp_tcp_accept(int listen_sock, int *sock, struct sockaddr_in *sour
     *sock = accept(listen_sock, (struct sockaddr *) source_addr, addr_len);
     if (*sock < 0)
     {
+        if (errno == EWOULDBLOCK)
+        {
+            *sock = -1;
+            return ESP_OK;
+        }
+
         ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
         return ESP_FAIL;
     }
@@ -492,6 +537,13 @@ esp_err_t espfsp_create_tcp_server(int *sock, int port)
     ESP_LOGI(TAG, "TCP server socket created");
     int err = 0;
 
+    int flags = fcntl(*sock, F_GETFL);
+    if (fcntl(*sock, F_SETFL, flags | O_NONBLOCK) == -1) {
+        ESP_LOGE(TAG, "Unable to set socket non blocking: errno %d", errno);
+        close(*sock);
+        return ESP_FAIL;
+    }
+
     int reuse_addr_opt = 1;
     setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &reuse_addr_opt, sizeof(reuse_addr_opt));
 
@@ -505,7 +557,7 @@ esp_err_t espfsp_create_tcp_server(int *sock, int port)
 
     ESP_LOGI(TAG, "TCP server socket bound");
 
-    err = listen(*sock, 1);
+    err = listen(*sock, 3);
     if (err != 0)
     {
         ESP_LOGE(TAG, "TCP server unable to listen: errno %d", errno);

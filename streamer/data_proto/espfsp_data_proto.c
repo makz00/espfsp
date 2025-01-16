@@ -32,6 +32,10 @@ static esp_err_t update_frame_config(espfsp_data_proto_t *data_proto, espfsp_fra
     data_proto->frame_config.frame_max_len = frame_config->frame_max_len;
     data_proto->frame_config.fps = frame_config->fps;
 
+    data_proto->frame_interval_us = 1000000ULL / frame_config->fps;
+
+    ESP_LOGI(TAG, "FPS updated to: %d", frame_config->fps); // Debug only
+
     return ESP_OK;
 }
 
@@ -153,7 +157,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
             }
             else
             {
-                vTaskDelay(200 / portTICK_PERIOD_MS);
+                taskYIELD();
             }
 
             change_state_base_ret(data_proto, next_state, ret);
@@ -229,6 +233,8 @@ esp_err_t espfsp_data_proto_stop(espfsp_data_proto_t *data_proto)
 
 esp_err_t espfsp_data_proto_set_frame_params(espfsp_data_proto_t *data_proto, espfsp_frame_config_t *frame_config)
 {
+    xQueueReset(data_proto->settingsQueue);
+
     if (xQueueSend(data_proto->settingsQueue, frame_config, 0) != pdPASS)
     {
         ESP_LOGE(TAG, "Cannot send frame config to queue");

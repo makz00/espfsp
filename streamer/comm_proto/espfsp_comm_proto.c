@@ -240,6 +240,8 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
         {
         case ESPFSP_COMM_PROTO_STATE_LISTEN:
 
+            taskYIELD();
+
             int remote_action_received = 0;
 
             ret = receive_action_from_sock(
@@ -263,6 +265,8 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 
         case ESPFSP_COMM_PROTO_STATE_ACTION:
 
+            taskYIELD();
+
             if (xQueueReceive(comm_proto->reqActionQueue, &action, 0) == pdPASS)
             {
                 ret = execute_local_action(comm_proto, sock, &action, &conn_state, &tlv_buffer);
@@ -280,6 +284,8 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
             break;
 
         case ESPFSP_COMM_PROTO_STATE_REPTIV:
+
+            taskYIELD();
 
             if (comm_proto->config->repetive_callback != NULL)
             {
@@ -571,7 +577,7 @@ esp_err_t espfsp_comm_proto_cam_params(espfsp_comm_proto_t *comm_proto, espfsp_c
         sizeof(espfsp_comm_resp_cam_params_resp_message_t));
 }
 
-esp_err_t espfsp_comm_proto_farme_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_frame_params_resp_message_t *msg)
+esp_err_t espfsp_comm_proto_frame_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_frame_params_resp_message_t *msg)
 {
     return insert_action(
         comm_proto,

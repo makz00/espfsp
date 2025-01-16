@@ -16,6 +16,8 @@
 #include "server/espfsp_session_manager.h"
 #include "comm_proto/espfsp_comm_proto.h"
 
+#define SERVER_SLEEP_TIME (200 / portTICK_PERIOD_MS)
+
 static const char *TAG = "ESPFSP_SERVER_SESSION_AND_CONTROL_TASK";
 
 typedef struct
@@ -94,10 +96,16 @@ void espfsp_server_session_and_control_task(void *pvParameters)
             struct sockaddr_in source_addr;
             socklen_t addr_len = sizeof(source_addr);
 
+            // Server sock is set nonblocking, so it could return without established connection
             ret = espfsp_tcp_accept(listen_sock, &sock, &source_addr, &addr_len);
             if (ret != ESP_OK)
             {
                 ESP_LOGE(TAG, "Accept TCP connection failed");
+                continue;
+            }
+            if (sock < 0)
+            {
+                vTaskDelay(SERVER_SLEEP_TIME);
                 continue;
             }
 

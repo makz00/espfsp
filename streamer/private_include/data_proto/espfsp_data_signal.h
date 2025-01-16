@@ -17,5 +17,5 @@
 // - server has to send data for received address
 // - client and server have to send signals from time to time, as downtime moments could occure
 
-esp_err_t espfsp_data_proto_handle_incoming_signal(espfsp_data_proto_t *data_proto, int sock);
+esp_err_t espfsp_data_proto_handle_incoming_signal(espfsp_data_proto_t *data_proto, int sock, bool *connected);
 esp_err_t espfsp_data_proto_handle_outcoming_signal(espfsp_data_proto_t *data_proto, int sock);

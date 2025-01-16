@@ -18,23 +18,34 @@
 
 static const char *TAG = "ESPFSP_DATA_PROT_SIGNAL";
 
+static struct timeval recv_timeout = {
+    .tv_sec = 0,
+    .tv_usec = MAX_TIME_US_NO_MSG_RECEIVED,
+};
+
 static esp_err_t get_last_signal(int sock, uint8_t *signal, struct sockaddr_in *addr, socklen_t *addr_len)
 {
     esp_err_t ret = ESP_OK;
     int received_bytes = 0;
 
-    ret = espfsp_receive_bytes_from(sock, (char *) signal, sizeof(uint8_t), addr, addr_len);
-    if (ret != ESP_OK)
-        return ret;
-
-    // With high probability, the lates receied packate will be the last one that went through NAT, so NAT mapping
-    // for this last packet should be kept in NAT with high probability
-    do
+    ret = espfsp_receive_from_block(
+        sock, (char *) signal, sizeof(uint8_t), &received_bytes, &recv_timeout, addr, addr_len);
+    // ret = espfsp_receive_bytes_from(sock, (char *) signal, sizeof(uint8_t), addr, addr_len);
+    if (ret == ESP_OK && received_bytes == 0)
     {
-        ret = espfsp_receive_from_no_block(sock, (char *) signal, sizeof(uint8_t), &received_bytes, addr, addr_len);
-        if (ret != ESP_OK)
-            return ret;
-    } while (received_bytes > 0);
+        *signal = NO_SIGNAL_VAL;
+    }
+    if (ret == ESP_OK && received_bytes >= 0)
+    {
+        // With high probability, the lates received packet will be the last one that went through NAT, so NAT mapping
+        // for this last packet should be kept in NAT with high probability
+        do
+        {
+            ret = espfsp_receive_from_no_block(sock, (char *) signal, sizeof(uint8_t), &received_bytes, addr, addr_len);
+            if (ret != ESP_OK)
+                break;
+        } while (received_bytes > 0);
+    }
 
     return ret;
 }
@@ -45,7 +56,7 @@ static bool should_signal_be_handled(espfsp_data_proto_t *data_proto, uint64_t c
            (current_time - data_proto->last_traffic) >= MAX_TIME_US_NO_NAT_TRAVERSAL;
 }
 
-esp_err_t espfsp_data_proto_handle_incoming_signal(espfsp_data_proto_t *data_proto, int sock)
+esp_err_t espfsp_data_proto_handle_incoming_signal(espfsp_data_proto_t *data_proto, int sock, bool *connected)
 {
     esp_err_t ret = ESP_OK;
     uint64_t current_time = esp_timer_get_time();
@@ -53,15 +64,22 @@ esp_err_t espfsp_data_proto_handle_incoming_signal(espfsp_data_proto_t *data_pro
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_UNSPEC;
     socklen_t addr_len = sizeof(addr);
+    *connected = true;
 
     if (should_signal_be_handled(data_proto, current_time))
     {
-        ret = espfsp_connect(sock, &addr); // Disconnect
+        // We assume that NAT entry could gone away and we need to make new one
+        *connected = false;
+
+        ret = espfsp_connect(sock, &addr); // Disconnect socket
         if (ret != ESP_OK)
             return ret;
 
         ret = get_last_signal(sock, &received_signal, &addr, &addr_len);
         if (ret != ESP_OK)
+            return ret;
+
+        if (received_signal == NO_SIGNAL_VAL)
             return ret;
 
         if (received_signal != SIGNAL_VAL_OK)
@@ -71,6 +89,7 @@ esp_err_t espfsp_data_proto_handle_incoming_signal(espfsp_data_proto_t *data_pro
         if (ret != ESP_OK)
             return ret;
 
+        *connected = true;
         data_proto->last_traffic = current_time;
     }
 

@@ -19,10 +19,11 @@
 #include "comm_proto/espfsp_comm_proto.h"
 
 #define MAX_TIME_US_NO_NAT_TRAVERSAL 5000000 // 5 seconds
-#define MAX_TIME_US_NO_MSG_RECEIVED  2000000 // 2 seconds
+#define MAX_TIME_US_NO_MSG_RECEIVED  200000 // 200 miliseconds
 
 #define NO_SIGNAL 0
 
+#define NO_SIGNAL_VAL  2
 #define SIGNAL_VAL_NOK  0
 #define SIGNAL_VAL_OK   1
 #define SIGNALS_TO_SEND 10
@@ -70,6 +71,7 @@ typedef struct {
     QueueHandle_t startStopQueue;
     QueueHandle_t settingsQueue;
     espfsp_frame_config_t frame_config;
+    uint64_t frame_interval_us;
     uint8_t en;
 } espfsp_data_proto_t;
 

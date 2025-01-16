@@ -35,6 +35,8 @@ typedef struct
     espfsp_comm_proto_t comm_proto;
     espfsp_data_proto_t data_proto;
 
+    QueueHandle_t onSourcesCb;
+
     espfsp_client_play_session_data_t session_data;
 } espfsp_client_play_instance_t;
 

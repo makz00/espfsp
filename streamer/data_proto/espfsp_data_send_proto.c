@@ -21,12 +21,17 @@ static const char *TAG = "ESPFSP_DATA_SEND_PROTOCOL";
 static esp_err_t send_fb(espfsp_data_proto_t *data_proto, int sock, espfsp_fb_t *send_fb)
 {
     esp_err_t ret = ESP_OK;
+    uint64_t current_time = esp_timer_get_time();
 
-    ret = espfsp_send_whole_fb(sock, send_fb);
+    ret = espfsp_send_whole_fb_within(sock, send_fb, data_proto->frame_interval_us);
     if (ret != ESP_OK)
         return ret;
 
-    data_proto->last_traffic = esp_timer_get_time();
+    ESP_LOGI(TAG, "Interval time: %lldms", data_proto->frame_interval_us >> 10);
+    ESP_LOGI(TAG, "Send time: %lldms", (current_time - data_proto->last_traffic) >> 10);
+
+    data_proto->last_traffic = current_time;
+
     return ret;
 }
 
@@ -54,8 +59,9 @@ esp_err_t espfsp_data_proto_handle_send(espfsp_data_proto_t *data_proto, int soc
     {
     case ESPFSP_DATA_PROTO_MODE_NAT:
 
-        ret = espfsp_data_proto_handle_incoming_signal(data_proto, sock);
-        if (ret != ESP_OK)
+        bool connected = false;
+        ret = espfsp_data_proto_handle_incoming_signal(data_proto, sock, &connected);
+        if (ret != ESP_OK || !connected)
             return ret;
 
     default:

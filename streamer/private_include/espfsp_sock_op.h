@@ -28,6 +28,7 @@ void espfsp_set_addr(struct sockaddr_in *addr, const struct esp_ip4_addr *esp_ad
 void espfsp_set_local_addr(struct sockaddr_in *addr, int port);
 
 esp_err_t espfsp_send_whole_fb(int sock, espfsp_fb_t *fb);
+esp_err_t espfsp_send_whole_fb_within(int sock, espfsp_fb_t *fb, uint64_t time_us);
 esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr_in *dest_addr);
 
 esp_err_t espfsp_send(int sock, char *rx_buffer, int rx_buffer_len);
