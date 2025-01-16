@@ -16,6 +16,10 @@
 #include "data_proto/espfsp_data_send_proto.h"
 #include "data_proto/espfsp_data_proto.h"
 
+// Assume that TICK is 1ms
+#define SEND_TASK_DELAY (5 / portTICK_PERIOD_MS)
+#define RECV_TASK_DELAY (0 / portTICK_PERIOD_MS)
+
 #define QUEUE_MAX_SIZE 3
 
 #define NO_VAL 0
@@ -34,7 +38,7 @@ static esp_err_t update_frame_config(espfsp_data_proto_t *data_proto, espfsp_fra
 
     data_proto->frame_interval_us = 1000000ULL / frame_config->fps;
 
-    ESP_LOGI(TAG, "FPS updated to: %d", frame_config->fps); // Debug only
+    ESP_LOGI(TAG, "FPS updated to: %d", frame_config->fps);
 
     return ESP_OK;
 }
@@ -85,11 +89,13 @@ static esp_err_t handle_data_proto(espfsp_data_proto_t *data_proto, int sock)
     case ESPFSP_DATA_PROTO_TYPE_SEND:
 
         ret = espfsp_data_proto_handle_send(data_proto, sock);
+        vTaskDelay(SEND_TASK_DELAY);
         break;
 
     case ESPFSP_DATA_PROTO_TYPE_RECV:
 
         ret = espfsp_data_proto_handle_recv(data_proto, sock);
+        vTaskDelay(RECV_TASK_DELAY);
         break;
 
     default:
@@ -117,7 +123,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
     ESP_LOGI(TAG, "Start data handling");
 
     data_proto->state = ESPFSP_DATA_PROTO_STATE_START_STOP_CHECK;
-    data_proto->last_traffic = NO_SIGNAL;
+    data_proto->last_traffic = TRAFFIC_NO_SIGNAL;
     data_proto->en = 1;
 
     bool started = false;
@@ -157,7 +163,7 @@ esp_err_t espfsp_data_proto_run(espfsp_data_proto_t *data_proto, int sock)
             }
             else
             {
-                vTaskDelay(pdMS_TO_TICKS(10));
+                vTaskDelay(pdMS_TO_TICKS(50));
             }
 
             change_state_base_ret(data_proto, next_state, ret);

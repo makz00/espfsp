@@ -21,11 +21,11 @@
 #define MAX_TIME_US_NO_NAT_TRAVERSAL 5000000 // 5 seconds
 #define MAX_TIME_US_NO_MSG_RECEIVED  200000 // 200 miliseconds
 
-#define NO_SIGNAL 0
+#define TRAFFIC_NO_SIGNAL 0
 
-#define NO_SIGNAL_VAL  2
-#define SIGNAL_VAL_NOK  0
-#define SIGNAL_VAL_OK   1
+#define NAT_SIGNAL_VAL_NOK  0
+#define NAT_SIGNAL_VAL_OK   1
+#define NAT_NO_SIGNAL_VAL   2
 #define SIGNALS_TO_SEND 10
 
 typedef enum {

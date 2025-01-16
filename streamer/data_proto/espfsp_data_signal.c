@@ -33,7 +33,7 @@ static esp_err_t get_last_signal(int sock, uint8_t *signal, struct sockaddr_in *
     // ret = espfsp_receive_bytes_from(sock, (char *) signal, sizeof(uint8_t), addr, addr_len);
     if (ret == ESP_OK && received_bytes == 0)
     {
-        *signal = NO_SIGNAL_VAL;
+        *signal = NAT_NO_SIGNAL_VAL;
     }
     if (ret == ESP_OK && received_bytes >= 0)
     {
@@ -52,7 +52,7 @@ static esp_err_t get_last_signal(int sock, uint8_t *signal, struct sockaddr_in *
 
 static bool should_signal_be_handled(espfsp_data_proto_t *data_proto, uint64_t current_time)
 {
-    return data_proto->last_traffic == NO_SIGNAL ||
+    return data_proto->last_traffic == TRAFFIC_NO_SIGNAL ||
            (current_time - data_proto->last_traffic) >= MAX_TIME_US_NO_NAT_TRAVERSAL;
 }
 
@@ -60,9 +60,8 @@ esp_err_t espfsp_data_proto_handle_incoming_signal(espfsp_data_proto_t *data_pro
 {
     esp_err_t ret = ESP_OK;
     uint64_t current_time = esp_timer_get_time();
-    uint8_t received_signal = SIGNAL_VAL_NOK;
+    uint8_t received_signal = NAT_SIGNAL_VAL_NOK;
     struct sockaddr_in addr = {0};
-    addr.sin_family = AF_UNSPEC;
     socklen_t addr_len = sizeof(addr);
     *connected = true;
 
@@ -70,27 +69,26 @@ esp_err_t espfsp_data_proto_handle_incoming_signal(espfsp_data_proto_t *data_pro
     {
         // We assume that NAT entry could gone away and we need to make new one
         *connected = false;
+        addr.sin_family = AF_UNSPEC;
 
         ret = espfsp_connect(sock, &addr); // Disconnect socket
-        if (ret != ESP_OK)
-            return ret;
-
-        ret = get_last_signal(sock, &received_signal, &addr, &addr_len);
-        if (ret != ESP_OK)
-            return ret;
-
-        if (received_signal == NO_SIGNAL_VAL)
-            return ret;
-
-        if (received_signal != SIGNAL_VAL_OK)
-            return ESP_FAIL;
-
-        ret = espfsp_connect(sock, &addr);
-        if (ret != ESP_OK)
-            return ret;
-
-        *connected = true;
-        data_proto->last_traffic = current_time;
+        if (ret == ESP_OK)
+        {
+            ret = get_last_signal(sock, &received_signal, &addr, &addr_len);
+        }
+        if (ret == ESP_OK && received_signal == NAT_SIGNAL_VAL_NOK)
+        {
+            ret = ESP_FAIL;
+        }
+        if (ret == ESP_OK && received_signal == NAT_SIGNAL_VAL_OK)
+        {
+            ret = espfsp_connect(sock, &addr);
+        }
+        if (ret == ESP_OK && received_signal == NAT_SIGNAL_VAL_OK)
+        {
+            *connected = true;
+            data_proto->last_traffic = current_time;
+        }
     }
 
     return ret;
@@ -101,18 +99,21 @@ esp_err_t espfsp_data_proto_handle_outcoming_signal(espfsp_data_proto_t *data_pr
     esp_err_t ret = ESP_OK;
     uint64_t current_time = esp_timer_get_time();
     uint8_t signals_to_send = SIGNALS_TO_SEND;
-    uint8_t signal = SIGNAL_VAL_OK;
+    uint8_t signal = NAT_SIGNAL_VAL_OK;
 
     if(should_signal_be_handled(data_proto, current_time))
     {
         while (signals_to_send-- > 0)
         {
-            ret = espfsp_send(sock, (char *)&signal, sizeof(signal));
-            if (ret != ESP_OK)
-                return ret;
+            if (ret == ESP_OK)
+            {
+                ret = espfsp_send(sock, (char *)&signal, sizeof(signal));
+            }
         }
-
-        data_proto->last_traffic = current_time;
+        if (ret == ESP_OK)
+        {
+            data_proto->last_traffic = current_time;
+        }
     }
 
     return ret;

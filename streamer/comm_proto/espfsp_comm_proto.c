@@ -17,6 +17,8 @@
 #include "espfsp_sock_op.h"
 #include "comm_proto/espfsp_comm_proto.h"
 
+#define COMM_PROTO_DELAY (50 / portTICK_PERIOD_MS)
+
 static const char *TAG = "ESPFSP_COMMUNICATION_PROTOCOL";
 
 esp_err_t espfsp_comm_proto_init(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_config_t *config)
@@ -227,7 +229,6 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 
     ESP_LOGI(TAG, "Start communication handling");
 
-    // Start from LSISTEN, as actions are planned after received requests
     espfsp_comm_proto_state_t state = ESPFSP_COMM_PROTO_STATE_LISTEN;
     comm_proto->en = 1;
 
@@ -240,7 +241,7 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
         {
         case ESPFSP_COMM_PROTO_STATE_LISTEN:
 
-            taskYIELD();
+            vTaskDelay(COMM_PROTO_DELAY);
 
             int remote_action_received = 0;
 
@@ -255,7 +256,6 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 
             if (ret == ESP_OK && conn_state != ESPFSP_CONN_STATE_GOOD)
             {
-                // Connection can also be closed, reset, terminated ..., so it has to be handled here
                 change_state_base_conn_state(&state, conn_state);
                 break;
             }
@@ -265,7 +265,7 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 
         case ESPFSP_COMM_PROTO_STATE_ACTION:
 
-            taskYIELD();
+            vTaskDelay(COMM_PROTO_DELAY);
 
             if (xQueueReceive(comm_proto->reqActionQueue, &action, 0) == pdPASS)
             {
@@ -274,7 +274,6 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 
                 if (ret == ESP_OK && conn_state != ESPFSP_CONN_STATE_GOOD)
                 {
-                    // Connection can also be closed, reset, terminated ..., so it has to be handled here
                     change_state_base_conn_state(&state, conn_state);
                     break;
                 }
@@ -285,7 +284,7 @@ esp_err_t espfsp_comm_proto_run(espfsp_comm_proto_t *comm_proto, int sock)
 
         case ESPFSP_COMM_PROTO_STATE_REPTIV:
 
-            taskYIELD();
+            vTaskDelay(COMM_PROTO_DELAY);
 
             if (comm_proto->config->repetive_callback != NULL)
             {

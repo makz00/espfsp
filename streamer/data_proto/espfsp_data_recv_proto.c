@@ -32,22 +32,20 @@ static esp_err_t recv_msg(espfsp_data_proto_t *data_proto, int sock)
     // This function receive data that are sent with UDP, so receive 0 bytes can happen.
     // We cannot block on this call as maybe another NAT hole punch is required to receive data.
     ret = espfsp_receive_block(sock, rx_buffer, sizeof(espfsp_message_t), &received, &recv_timeout);
-    if (ret != ESP_OK)
-        return ret;
+    if (ret == ESP_OK && received > 0)
+    {
+        // ESP_LOGI(
+        //     TAG,
+        //     "Received msg part: %d/%d for timestamp: sek: %lld, usek: %ld",
+        //     ((espfsp_message_t *)rx_buffer)->msg_number,
+        //     ((espfsp_message_t *)rx_buffer)->msg_total,
+        //     ((espfsp_message_t *)rx_buffer)->timestamp.tv_sec,
+        //     ((espfsp_message_t *)rx_buffer)->timestamp.tv_usec);
 
-    if (received == 0)
-        return ESP_OK;
+        espfsp_message_buffer_process_message((espfsp_message_t *)rx_buffer, data_proto->config->recv_buffer);
+        data_proto->last_traffic = esp_timer_get_time();
+    }
 
-    // ESP_LOGI(
-    //     TAG,
-    //     "Received msg part: %d/%d for timestamp: sek: %lld, usek: %ld",
-    //     ((espfsp_message_t *)rx_buffer)->msg_number,
-    //     ((espfsp_message_t *)rx_buffer)->msg_total,
-    //     ((espfsp_message_t *)rx_buffer)->timestamp.tv_sec,
-    //     ((espfsp_message_t *)rx_buffer)->timestamp.tv_usec);
-
-    espfsp_message_buffer_process_message((espfsp_message_t *)rx_buffer, data_proto->config->recv_buffer);
-    data_proto->last_traffic = esp_timer_get_time();
     return ret;
 }
 
@@ -55,16 +53,14 @@ esp_err_t espfsp_data_proto_handle_recv(espfsp_data_proto_t *data_proto, int soc
 {
     esp_err_t ret = ESP_OK;
 
-    switch (data_proto->config->mode)
+    if (data_proto->config->mode == ESPFSP_DATA_PROTO_MODE_NAT)
     {
-    case ESPFSP_DATA_PROTO_MODE_NAT:
-
         ret = espfsp_data_proto_handle_outcoming_signal(data_proto, sock);
-        if (ret != ESP_OK)
-            return ret;
-
-    default:
+    }
+    if (ret == ESP_OK)
+    {
+        ret = recv_msg(data_proto, sock);
     }
 
-    return recv_msg(data_proto, sock);
+    return ret;
 }

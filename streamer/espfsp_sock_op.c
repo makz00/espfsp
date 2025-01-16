@@ -148,7 +148,7 @@ esp_err_t espfsp_send_whole_fb_within(int sock, espfsp_fb_t *fb, uint64_t time_u
         {
             TickType_t ticks_to_delay = acc_time_to_wait_us / portTICK_PERIOD_US;
             acc_time_to_wait_us = acc_time_to_wait_us % portTICK_PERIOD_US;
-            vTaskDelay(ticks_to_delay);
+            vTaskDelay(ticks_to_delay); // Delay to spread messages out in time
         }
     }
 
