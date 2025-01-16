@@ -58,7 +58,6 @@ typedef struct {
     espfsp_data_proto_type_t type;
     espfsp_data_proto_mode_t mode;
     espfsp_receiver_buffer_t *recv_buffer;                  // Receiver buffer has to be configured; It is not managed by Data Protocol
-    espfsp_fb_t *send_fb;                                   // Send FB has to be configured; It is not managed by Data Protocol
     __espfsp_data_proto_send_frame send_frame_callback;     // Callback to obtain FB that will be sent by Data Protocol
     void *send_frame_ctx;
     espfsp_frame_config_t *frame_config;
@@ -67,6 +66,7 @@ typedef struct {
 typedef struct {
     espfsp_data_proto_config_t *config;
     espfsp_data_proto_state_t state;
+    espfsp_fb_t send_fb;
     uint64_t last_traffic;
     QueueHandle_t startStopQueue;
     QueueHandle_t settingsQueue;

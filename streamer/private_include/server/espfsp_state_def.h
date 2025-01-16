@@ -28,7 +28,6 @@ typedef struct
     espfsp_server_config_t *config;
     bool used;
 
-    espfsp_fb_t sender_frame;
     espfsp_receiver_buffer_t receiver_buffer;
 
     espfsp_comm_proto_t client_push_comm_proto[CONFIG_ESPFSP_SERVER_CLIENT_PUSH_MAX_CONNECTIONS];

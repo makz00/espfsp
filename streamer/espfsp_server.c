@@ -226,13 +226,6 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
 
     esp_err_t err = ESP_OK;
 
-    instance->sender_frame.buf = (char *) malloc(config->frame_config.frame_max_len);
-    if (instance->sender_frame.buf == NULL)
-    {
-        ESP_LOGE(TAG, "Memory allocation for sender frame buffer failed");
-        return NULL;
-    }
-
     espfsp_receiver_buffer_config_t receiver_buffer_config = {
         .buffered_fbs = config->buffered_fbs,
         .frame_max_len = config->frame_config.frame_max_len,
@@ -360,7 +353,6 @@ static esp_err_t remove_server(espfsp_server_instance_t *instance)
         return ret;
     }
 
-    free(instance->sender_frame.buf);
     free(instance->config);
     instance->used = false;
 

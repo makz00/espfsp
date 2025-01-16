@@ -30,7 +30,19 @@ static const char *TAG = "ESPFSP_DATA_PROTOCOL";
 
 static esp_err_t update_frame_config(espfsp_data_proto_t *data_proto, espfsp_frame_config_t *frame_config)
 {
-    // Probably only FPS will be needed, but for now lets keep all frame parameters
+    if (data_proto->config->type == ESPFSP_DATA_PROTO_TYPE_SEND
+        && data_proto->frame_config.frame_max_len != frame_config->frame_max_len)
+    {
+        free(data_proto->send_fb.buf);
+
+        data_proto->send_fb.buf = (char *) malloc(frame_config->frame_max_len);
+        if (data_proto->send_fb.buf == NULL)
+        {
+            ESP_LOGE(TAG, "Cannot reinitialize memory for send frame buffer");
+            return ESP_FAIL;
+        }
+    }
+
     data_proto->frame_config.pixel_format = frame_config->pixel_format;
     data_proto->frame_config.frame_size = frame_config->frame_size;
     data_proto->frame_config.frame_max_len = frame_config->frame_max_len;
@@ -54,6 +66,18 @@ esp_err_t espfsp_data_proto_init(espfsp_data_proto_t *data_proto, espfsp_data_pr
 
     memcpy(data_proto->config, config, sizeof(espfsp_data_proto_config_t));
 
+    if (config->type == ESPFSP_DATA_PROTO_TYPE_SEND)
+    {
+        data_proto->send_fb.buf = (char *) malloc(config->frame_config->frame_max_len);
+        if (data_proto->send_fb.buf == NULL)
+        {
+            ESP_LOGE(TAG, "Cannot initialize memory for send frame buffer");
+            return ESP_FAIL;
+        }
+
+        data_proto->frame_config.frame_max_len = config->frame_config->frame_max_len;
+    }
+
     data_proto->startStopQueue = xQueueCreate(QUEUE_MAX_SIZE, sizeof(uint8_t));
     if (data_proto->startStopQueue == NULL)
     {
@@ -73,9 +97,15 @@ esp_err_t espfsp_data_proto_init(espfsp_data_proto_t *data_proto, espfsp_data_pr
 
 esp_err_t espfsp_data_proto_deinit(espfsp_data_proto_t *data_proto)
 {
-    free(data_proto->config);
     vQueueDelete(data_proto->startStopQueue);
     vQueueDelete(data_proto->settingsQueue);
+
+    if (data_proto->config->type == ESPFSP_DATA_PROTO_TYPE_SEND)
+    {
+        free(data_proto->send_fb.buf);
+    }
+
+    free(data_proto->config);
 
     return ESP_OK;
 }

@@ -20,24 +20,22 @@ static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_f
     espfsp_send_frame_cb_state_t send_frame_cb_state = ESPFSP_SEND_FRAME_CB_FRAME_NOT_OBTAINED;
 
     ret = instance->config->cb.send_frame(fb, &send_frame_cb_state);
-    if (ret != ESP_OK)
+    if (ret == ESP_OK)
     {
-        return ret;
-    }
+        switch (send_frame_cb_state)
+        {
+        case ESPFSP_SEND_FRAME_CB_FRAME_OBTAINED:
+            *state = ESPFSP_DATA_PROTO_FRAME_OBTAINED;
+            break;
 
-    switch (send_frame_cb_state)
-    {
-    case ESPFSP_SEND_FRAME_CB_FRAME_OBTAINED:
-        *state = ESPFSP_DATA_PROTO_FRAME_OBTAINED;
-        break;
+        case ESPFSP_SEND_FRAME_CB_FRAME_NOT_OBTAINED:
+            *state = ESPFSP_DATA_PROTO_FRAME_NOT_OBTAINED;
+            break;
 
-    case ESPFSP_SEND_FRAME_CB_FRAME_NOT_OBTAINED:
-        *state = ESPFSP_DATA_PROTO_FRAME_NOT_OBTAINED;
-        break;
-
-    default:
-        ESP_LOGE(TAG, "Send frame CB state not handled");
-        ret = ESP_FAIL;
+        default:
+            ESP_LOGE(TAG, "Send frame CB state not handled");
+            ret = ESP_FAIL;
+        }
     }
 
     return ret;
@@ -50,7 +48,6 @@ esp_err_t espfsp_client_push_data_protos_init(espfsp_client_push_instance_t *ins
     config.type = ESPFSP_DATA_PROTO_TYPE_SEND;
     config.mode = ESPFSP_DATA_PROTO_MODE_LOCAL;
     config.recv_buffer = NULL;
-    config.send_fb = &instance->sender_frame;
     config.send_frame_callback = send_frame;
     config.send_frame_ctx = instance;
     config.frame_config = &instance->config->frame_config;

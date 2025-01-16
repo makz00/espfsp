@@ -28,8 +28,6 @@ typedef struct
     espfsp_client_push_config_t *config;
     bool used;
 
-    espfsp_fb_t sender_frame;
-
     espfsp_comm_proto_t comm_proto;
     espfsp_data_proto_t data_proto;
 

@@ -71,7 +71,6 @@ esp_err_t espfsp_server_data_protos_init(espfsp_server_instance_t *instance)
     config.type = ESPFSP_DATA_PROTO_TYPE_SEND;
     config.mode = ESPFSP_DATA_PROTO_MODE_NAT;
     config.recv_buffer = NULL;
-    config.send_fb = &instance->sender_frame;
     config.send_frame_callback = send_frame;
     config.send_frame_ctx = instance;
     config.frame_config = &instance->config->frame_config;

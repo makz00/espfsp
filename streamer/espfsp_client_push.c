@@ -130,13 +130,6 @@ static espfsp_client_push_instance_t *create_new_client_push(const espfsp_client
 
     esp_err_t err = ESP_OK;
 
-    instance->sender_frame.buf = (char *) malloc(config->frame_config.frame_max_len);
-    if (instance->sender_frame.buf == NULL)
-    {
-        ESP_LOGE(TAG, "Sender frame buffer is not initialized");
-        return NULL;
-    }
-
     err = espfsp_client_push_comm_protos_init(instance);
     if (err != ESP_OK)
     {
@@ -217,7 +210,6 @@ static esp_err_t remove_client_push(espfsp_client_push_instance_t *instance)
         return ret;
     }
 
-    free(instance->sender_frame.buf);
     free(instance->config);
     instance->used = false;
 
