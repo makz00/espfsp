@@ -14,12 +14,13 @@
 typedef struct {
     uint32_t frame_max_len;
     uint16_t buffered_fbs;
+    uint16_t fb_in_buffer_before_get;
 } espfsp_receiver_buffer_config_t;
 
 typedef struct {
+    espfsp_receiver_buffer_config_t *config;
     QueueHandle_t frameQueue;
     espfsp_message_assembly_t *fbs_messages_buf;
-    uint16_t buffered_fbs;
     espfsp_fb_t *s_fb;
     espfsp_message_assembly_t *s_ass;
 } espfsp_receiver_buffer_t;
@@ -28,9 +29,11 @@ esp_err_t espfsp_message_buffer_init(espfsp_receiver_buffer_t *receiver_buffer, 
 esp_err_t espfsp_message_buffer_deinit(espfsp_receiver_buffer_t *receiver_buffer);
 
 // Allowed to use only if no other task use receive_buffer
-esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer);
+// esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer);
 
+// Consumer interface
 espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer, uint32_t timeout_ms);
 esp_err_t espfsp_message_buffer_return_fb(espfsp_receiver_buffer_t *receiver_buffer);
 
+// Producer interface
 void espfsp_message_buffer_process_message(const espfsp_message_t *message, espfsp_receiver_buffer_t *instance);

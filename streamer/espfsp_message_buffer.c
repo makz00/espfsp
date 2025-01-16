@@ -52,7 +52,7 @@ static bool is_equal(const struct timeval *lh, const struct timeval *rh)
 
 static espfsp_message_assembly_t *get_assembly_with_timestamp(const struct timeval* timestamp, espfsp_receiver_buffer_t *receiver_buffer)
 {
-    for (int i = 0; i < receiver_buffer->buffered_fbs; i++)
+    for (int i = 0; i < receiver_buffer->config->buffered_fbs; i++)
     {
         espfsp_message_assembly_t *cur = &receiver_buffer->fbs_messages_buf[i];
 
@@ -67,7 +67,7 @@ static espfsp_message_assembly_t *get_assembly_with_timestamp(const struct timev
 
 static espfsp_message_assembly_t *get_free_assembly(espfsp_receiver_buffer_t *receiver_buffer)
 {
-    for (int i = 0; i < receiver_buffer->buffered_fbs; i++)
+    for (int i = 0; i < receiver_buffer->config->buffered_fbs; i++)
     {
         espfsp_message_assembly_t *cur = &receiver_buffer->fbs_messages_buf[i];
 
@@ -85,7 +85,7 @@ static espfsp_message_assembly_t *get_earliest_used_assembly(espfsp_receiver_buf
     espfsp_message_assembly_t *to_ret = NULL;
     struct timeval tv;
 
-    for (int i = 0; i < receiver_buffer->buffered_fbs; i++)
+    for (int i = 0; i < receiver_buffer->config->buffered_fbs; i++)
     {
         espfsp_message_assembly_t *cur = &receiver_buffer->fbs_messages_buf[i];
 
@@ -98,7 +98,7 @@ static espfsp_message_assembly_t *get_earliest_used_assembly(espfsp_receiver_buf
         }
     }
 
-    for (int i = 0; i < receiver_buffer->buffered_fbs; i++)
+    for (int i = 0; i < receiver_buffer->config->buffered_fbs; i++)
     {
         espfsp_message_assembly_t *cur = &receiver_buffer->fbs_messages_buf[i];
 
@@ -115,13 +115,19 @@ static espfsp_message_assembly_t *get_earliest_used_assembly(espfsp_receiver_buf
 
 esp_err_t espfsp_message_buffer_init(espfsp_receiver_buffer_t *receiver_buffer, const espfsp_receiver_buffer_config_t *config)
 {
-    // 1. Memory allocation
+    receiver_buffer->config = (espfsp_receiver_buffer_config_t *) malloc(sizeof(espfsp_receiver_buffer_config_t));
+    if (receiver_buffer->config == NULL)
+    {
+        ESP_LOGE(TAG, "Memory allocation for config failed");
+        return ESP_FAIL;
+    }
 
-    receiver_buffer->fbs_messages_buf = (espfsp_message_assembly_t *) heap_caps_aligned_calloc(
-        alignof(espfsp_message_assembly_t),
+    memcpy(receiver_buffer->config, config, sizeof(espfsp_receiver_buffer_config_t));
+
+    receiver_buffer->fbs_messages_buf = (espfsp_message_assembly_t *) heap_caps_calloc(
         1,
         config->buffered_fbs * sizeof(espfsp_message_assembly_t),
-        MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+        MALLOC_CAP_SPIRAM);
 
     if (!receiver_buffer->fbs_messages_buf)
     {
@@ -129,27 +135,11 @@ esp_err_t espfsp_message_buffer_init(espfsp_receiver_buffer_t *receiver_buffer, 
         return ESP_FAIL;
     }
 
-    receiver_buffer->buffered_fbs = config->buffered_fbs;
-
-    size_t alloc_size;
-
-    // HD resolution: 1280*720. In esp_cam it is diviced by 5. Here Resolution is diviced by 3;
-    // alloc_size = 307200;
-
-    // alloc_size = 100000;
-    alloc_size = config->frame_max_len;
-
-    // It is safe to assume that this size packet will not be fragmented
-    // size_t max_udp_packet_size = 512;
-
-    // It is 307200 / 512
-    // int number_of_messages_assembly = 600;
-
     for (int i = 0; i < config->buffered_fbs; i++)
     {
         receiver_buffer->fbs_messages_buf[i].buf = (uint8_t *) heap_caps_malloc(
-            alloc_size * sizeof(uint8_t),
-            MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+            config->frame_max_len * sizeof(uint8_t),
+            MALLOC_CAP_SPIRAM);
 
         if (!receiver_buffer->fbs_messages_buf[i].buf)
         {
@@ -161,16 +151,13 @@ esp_err_t espfsp_message_buffer_init(espfsp_receiver_buffer_t *receiver_buffer, 
     }
 
     receiver_buffer->s_fb = (espfsp_fb_t *) heap_caps_malloc(sizeof(espfsp_fb_t), MALLOC_CAP_DEFAULT);
-
-    if (!receiver_buffer->s_fb)
+    if (receiver_buffer->s_fb == NULL)
     {
         ESP_LOGE(TAG, "Cannot allocate memory for fb");
         return ESP_FAIL;
     }
 
-    // 2. Synchronizer initiation
-
-    receiver_buffer->frameQueue = xQueueCreate(receiver_buffer->buffered_fbs, sizeof(espfsp_message_assembly_t*));
+    receiver_buffer->frameQueue = xQueueCreate(config->buffered_fbs, sizeof(espfsp_message_assembly_t*));
     if (receiver_buffer->frameQueue == NULL)
     {
         ESP_LOGE(TAG, "Cannot initialize message assembly queue");
@@ -182,29 +169,26 @@ esp_err_t espfsp_message_buffer_init(espfsp_receiver_buffer_t *receiver_buffer, 
 
 esp_err_t espfsp_message_buffer_deinit(espfsp_receiver_buffer_t *receiver_buffer)
 {
-    // 1. Memory deallocation
+    espfsp_message_assembly_t *ass;
+    while (xQueueReceive(receiver_buffer->frameQueue, &ass, 0) == pdTRUE) {}
+    vQueueDelete(receiver_buffer->frameQueue);
 
     free(receiver_buffer->s_fb);
 
-    for (int i = 0; i < receiver_buffer->buffered_fbs; i++)
+    for (int i = 0; i < receiver_buffer->config->buffered_fbs; i++)
     {
         free(receiver_buffer->fbs_messages_buf[i].buf);
     }
 
     free(receiver_buffer->fbs_messages_buf);
-
-    // 2. Synchronizer deinitiation
-
-    espfsp_message_assembly_t *ass;
-    while (xQueueReceive(receiver_buffer->frameQueue, &ass, 0) == pdTRUE) {}
-    vQueueDelete(receiver_buffer->frameQueue);
+    free(receiver_buffer->config);
 
     return ESP_OK;
 }
 
 esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer)
 {
-    for (int i = 0; i < receiver_buffer->buffered_fbs; i++)
+    for (int i = 0; i < receiver_buffer->config->buffered_fbs; i++)
     {
         receiver_buffer->fbs_messages_buf[i].bits = MSG_ASS_PRODUCER_OWNED_VAL | MSG_ASS_FREE_VAL;
     }
@@ -219,6 +203,20 @@ esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer)
 
 espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer, uint32_t timeout_ms)
 {
+    UBaseType_t items_in_queue = uxQueueMessagesWaiting(receiver_buffer->frameQueue);
+
+    while (items_in_queue < receiver_buffer->config->fb_in_buffer_before_get && timeout_ms > 0)
+    {
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+        timeout_ms -= 10;
+        items_in_queue = uxQueueMessagesWaiting(receiver_buffer->frameQueue);
+    }
+
+    if (items_in_queue < receiver_buffer->config->fb_in_buffer_before_get)
+    {
+        return NULL;
+    }
+
     BaseType_t xStatus = xQueueReceive(receiver_buffer->frameQueue, &receiver_buffer->s_ass, timeout_ms / portTICK_PERIOD_MS);
     if (xStatus != pdTRUE)
     {
