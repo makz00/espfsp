@@ -25,7 +25,7 @@ static const char *TAG = "SERVER_COMMUNICATION_PROTOCOL_HANDLERS";
 esp_err_t espfsp_server_req_session_init_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
     esp_err_t ret = ESP_OK;
-    espfsp_comm_proto_req_session_init_message_t *msg = (espfsp_comm_proto_req_session_init_message_t *) msg_content;
+    // espfsp_comm_proto_req_session_init_message_t *msg = (espfsp_comm_proto_req_session_init_message_t *) msg_content;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
     espfsp_session_manager_t *session_manager = &instance->session_manager;
 
@@ -143,7 +143,7 @@ esp_err_t espfsp_server_req_start_stream_handler(espfsp_comm_proto_t *comm_proto
     espfsp_frame_config_t primary_push_frame_config;
     bool stream_started = false;
 
-    esp_err_t ret = espfsp_session_manager_take(session_manager);
+    ret = espfsp_session_manager_take(session_manager);
     if (ret == ESP_OK)
     {
         ret = espfsp_session_manager_get_session_id(session_manager, comm_proto, &play_session_id);
@@ -454,7 +454,6 @@ esp_err_t espfsp_server_req_source_get_handler(espfsp_comm_proto_t *comm_proto, 
     uint32_t play_session_id = -123;
     espfsp_comm_proto_t *active_push_comm_protos_buf[3];
     int active_push_comm_protos_count;
-    uint8_t num_sources = 0;
     char source_names[3][ESPFSP_SERVER_SESSION_NAME_MAX_LEN];
 
     ret = espfsp_session_manager_take(session_manager);

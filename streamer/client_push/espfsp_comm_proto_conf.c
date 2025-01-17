@@ -31,9 +31,7 @@ esp_err_t espfsp_client_push_comm_protos_init(espfsp_client_push_instance_t *ins
     config.req_callbacks[ESPFSP_COMM_REQ_START_STREAM] = espfsp_client_push_req_start_stream_handler;
     config.req_callbacks[ESPFSP_COMM_REQ_STOP_STREAM] = espfsp_client_push_req_stop_stream_handler;
     config.req_callbacks[ESPFSP_COMM_REQ_CAM_SET_PARAMS] = espfsp_client_push_req_cam_set_params_handler;
-    config.req_callbacks[ESPFSP_COMM_REQ_CAM_GET_PARAMS] = espfsp_client_push_req_cam_get_params_handler;
     config.req_callbacks[ESPFSP_COMM_REQ_FRAME_SET_PARAMS] = espfsp_client_push_req_frame_set_params_handler;
-    config.req_callbacks[ESPFSP_COMM_REQ_FRAME_GET_PARAMS] = espfsp_client_push_req_frame_get_params_handler;
     config.resp_callbacks[ESPFSP_COMM_RESP_SESSION_ACK] = espfsp_client_push_resp_session_ack_handler;
     config.repetive_callback = NULL;
     config.repetive_callback_freq_us = 100000000;

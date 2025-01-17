@@ -170,16 +170,6 @@ esp_err_t espfsp_client_push_req_cam_set_params_handler(
     return ret;
 }
 
-esp_err_t espfsp_client_push_req_cam_get_params_handler(
-    espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
-{
-    esp_err_t ret = ESP_OK;
-    espfsp_comm_req_cam_get_params_message_t *received_msg = (espfsp_comm_req_cam_get_params_message_t *) msg_content;
-    espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
-
-    return ret;
-}
-
 esp_err_t espfsp_client_push_req_frame_set_params_handler(
     espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
@@ -200,16 +190,6 @@ esp_err_t espfsp_client_push_req_frame_set_params_handler(
     {
         ESP_LOGI(TAG, "Received bad request for frame set params");
     }
-
-    return ret;
-}
-
-esp_err_t espfsp_client_push_req_frame_get_params_handler(
-    espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
-{
-    esp_err_t ret = ESP_OK;
-    espfsp_comm_req_frame_get_params_message_t *received_msg = (espfsp_comm_req_frame_get_params_message_t *) msg_content;
-    espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
 
     return ret;
 }

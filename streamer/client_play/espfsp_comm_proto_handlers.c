@@ -3,6 +3,8 @@
  * Author: Maksymilian Komarnicki
  */
 
+#include "string.h"
+
 #include "esp_err.h"
 #include "esp_log.h"
 
@@ -163,10 +165,6 @@ esp_err_t espfsp_client_play_connection_stop(espfsp_comm_proto_t *comm_proto, vo
 {
     esp_err_t ret = ESP_OK;
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) ctx;
-
-    espfsp_comm_proto_req_session_init_message_t msg = {
-        .client_type = ESPFSP_COMM_REQ_CLIENT_PLAY,
-    };
 
     if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
     {

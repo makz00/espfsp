@@ -8,7 +8,7 @@
 #include "sys/time.h"
 
 #include "espfsp_cam_config.h"
-// #include "espfsp_frame_config.h"
+#include "espfsp_frame_config.h"
 
 typedef int esp_err_t;
 

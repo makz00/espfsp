@@ -136,21 +136,21 @@ static espfsp_server_session_manager_data_t * find_session_data_in_dataset_by_co
     return NULL;
 }
 
-static espfsp_server_session_manager_data_t * find_session_data_in_dataset_by_session_id(
-    espfsp_server_session_manager_data_t *data_set, int data_count, uint32_t session_id)
-{
-    for (int i = 0; i < data_count; i++)
-    {
-        espfsp_server_session_manager_data_t *data = &data_set[i];
+// static espfsp_server_session_manager_data_t * find_session_data_in_dataset_by_session_id(
+//     espfsp_server_session_manager_data_t *data_set, int data_count, uint32_t session_id)
+// {
+//     for (int i = 0; i < data_count; i++)
+//     {
+//         espfsp_server_session_manager_data_t *data = &data_set[i];
 
-        if (data->session_id == session_id)
-        {
-            return data;
-        }
-    }
+//         if (data->session_id == session_id)
+//         {
+//             return data;
+//         }
+//     }
 
-    return NULL;
-}
+//     return NULL;
+// }
 
 static espfsp_server_session_manager_data_t* find_session_data_by_comm_proto(
     espfsp_session_manager_t *session_manager, espfsp_comm_proto_t *comm_proto)
@@ -168,21 +168,21 @@ static espfsp_server_session_manager_data_t* find_session_data_by_comm_proto(
         session_manager->client_play_session_data, session_manager->client_play_session_data_count, comm_proto);
 }
 
-static espfsp_server_session_manager_data_t* find_session_data_by_session_id(
-    espfsp_session_manager_t *session_manager, uint32_t session_id)
-{
-    espfsp_server_session_manager_data_t *data = NULL;
+// static espfsp_server_session_manager_data_t* find_session_data_by_session_id(
+//     espfsp_session_manager_t *session_manager, uint32_t session_id)
+// {
+//     espfsp_server_session_manager_data_t *data = NULL;
 
-    data = find_session_data_in_dataset_by_session_id(
-        session_manager->client_push_session_data, session_manager->client_push_session_data_count, session_id);
-    if (data != NULL)
-    {
-        return data;
-    }
+//     data = find_session_data_in_dataset_by_session_id(
+//         session_manager->client_push_session_data, session_manager->client_push_session_data_count, session_id);
+//     if (data != NULL)
+//     {
+//         return data;
+//     }
 
-    return find_session_data_in_dataset_by_session_id(
-        session_manager->client_play_session_data, session_manager->client_play_session_data_count, session_id);
-}
+//     return find_session_data_in_dataset_by_session_id(
+//         session_manager->client_play_session_data, session_manager->client_play_session_data_count, session_id);
+// }
 
 static esp_err_t get_data_set_info(
     espfsp_session_manager_t *session_manager,

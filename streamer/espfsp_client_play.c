@@ -721,15 +721,23 @@ esp_err_t espfsp_client_play_get_sources_timeout(
         return ESP_FAIL;
     }
 
-    BaseType_t xStatus = xQueueReceive(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0);
+    xStatus = xQueueReceive(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0);
     if (xStatus != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot receive producent value from queue");
         return ESP_FAIL;
     }
 
-    *sources_names_len = producer_val.sources_names_len;
-    memcpy(sources_names_buf, producer_val.sources_names_buf, sizeof(sources_names_buf));
+    if (*sources_names_len >= producer_val.sources_names_len)
+    {
+        memcpy(sources_names_buf, producer_val.sources_names_buf, producer_val.sources_names_len);
+        *sources_names_len = producer_val.sources_names_len;
+    }
+    else
+    {
+        memcpy(sources_names_buf, producer_val.sources_names_buf, *sources_names_len);
+        *sources_names_len = producer_val.sources_names_len;
+    }
 
     return ESP_OK;
 }

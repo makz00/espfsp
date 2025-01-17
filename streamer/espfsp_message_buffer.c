@@ -25,10 +25,10 @@ static bool is_assembly_producer_owner(const espfsp_message_assembly_t *assembly
     return (assembly->bits & MSG_ASS_OWNED_BIT) == MSG_ASS_PRODUCER_OWNED_VAL;
 }
 
-static bool is_assembly_consumer_owner(const espfsp_message_assembly_t *assembly)
-{
-    return (assembly->bits & MSG_ASS_OWNED_BIT) == MSG_ASS_CONSUMER_OWNED_VAL;
-}
+// static bool is_assembly_consumer_owner(const espfsp_message_assembly_t *assembly)
+// {
+//     return (assembly->bits & MSG_ASS_OWNED_BIT) == MSG_ASS_CONSUMER_OWNED_VAL;
+// }
 
 static bool is_assembly_used(const espfsp_message_assembly_t *assembly)
 {
