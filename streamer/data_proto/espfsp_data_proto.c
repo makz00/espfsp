@@ -43,10 +43,7 @@ static esp_err_t update_frame_config(espfsp_data_proto_t *data_proto, espfsp_fra
         }
     }
 
-    data_proto->frame_config.pixel_format = frame_config->pixel_format;
-    data_proto->frame_config.frame_size = frame_config->frame_size;
-    data_proto->frame_config.frame_max_len = frame_config->frame_max_len;
-    data_proto->frame_config.fps = frame_config->fps;
+    memcpy(&data_proto->frame_config, frame_config, sizeof(espfsp_frame_config_t));
 
     data_proto->frame_interval_us = 1000000ULL / frame_config->fps;
 

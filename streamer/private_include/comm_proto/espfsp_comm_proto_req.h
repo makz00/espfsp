@@ -18,12 +18,10 @@ typedef enum {
     ESPFSP_COMM_REQ_CAM_GET_PARAMS = 0x07,
     ESPFSP_COMM_REQ_FRAME_SET_PARAMS = 0x08,
     ESPFSP_COMM_REQ_FRAME_GET_PARAMS = 0x09,
-    ESPFSP_COMM_REQ_PROTO_SET_PARAMS = 0x0A,
-    ESPFSP_COMM_REQ_PROTO_GET_PARAMS = 0x0B,
-    ESPFSP_COMM_REQ_SOURCE_SET = 0x0C,
-    ESPFSP_COMM_REQ_SOURCE_GET = 0x0D,
+    ESPFSP_COMM_REQ_SOURCE_SET = 0x0A,
+    ESPFSP_COMM_REQ_SOURCE_GET = 0x0B,
 
-    ESPFSP_COMM_REQ_MAX_NUMBER = 0x0E,
+    ESPFSP_COMM_REQ_MAX_NUMBER = 0x0C,
 
     // ESPFSP_COMM_REQ_STREAM_STATUS = 0xXX,
 } espfsp_comm_proto_req_type_t;
@@ -84,19 +82,6 @@ typedef struct {
     uint32_t session_id;
     uint16_t param_id;
 } espfsp_comm_req_frame_get_params_message_t;
-
-// // For ESPFSP_COMM_REQ_PROTO_SET_PARAMS
-typedef struct {
-    uint32_t session_id;
-    uint16_t param_id;
-    uint32_t value;
-} espfsp_comm_req_proto_set_params_message_t;
-
-// // For ESPFSP_COMM_REQ_PROTO_GET_PARAMS
-typedef struct {
-    uint32_t session_id;
-    uint16_t param_id;
-} espfsp_comm_req_proto_get_params_message_t;
 
 // // For ESPFSP_COMM_REQ_SOURCE_SET
 typedef struct {

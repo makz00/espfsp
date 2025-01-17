@@ -57,7 +57,6 @@ esp_err_t espfsp_server_data_protos_init(espfsp_server_instance_t *instance)
     config.type = ESPFSP_DATA_PROTO_TYPE_RECV;
     config.mode = ESPFSP_DATA_PROTO_MODE_LOCAL;
     config.recv_buffer = &instance->receiver_buffer;
-    config.send_fb = NULL;
     config.send_frame_callback = NULL;
     config.send_frame_ctx = NULL;
     config.frame_config = &instance->config->frame_config;

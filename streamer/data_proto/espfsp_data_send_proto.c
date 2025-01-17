@@ -47,7 +47,8 @@ esp_err_t espfsp_data_proto_handle_send(espfsp_data_proto_t *data_proto, int soc
     // depending on configuration.
     // In order to not block, it shall return after some small time in order to not trigger WD.
     // It is best not to block at all in this callback.
-    ret = data_proto->config->send_frame_callback(send_fb, data_proto->config->send_frame_ctx, frame_state);
+    ret = data_proto->config->send_frame_callback(
+        &data_proto->send_fb, data_proto->config->send_frame_ctx, &frame_state);
     if (ret == ESP_OK &&
         frame_state == ESPFSP_DATA_PROTO_FRAME_OBTAINED &&
         data_proto->config->mode == ESPFSP_DATA_PROTO_MODE_NAT)
@@ -57,7 +58,7 @@ esp_err_t espfsp_data_proto_handle_send(espfsp_data_proto_t *data_proto, int soc
     }
     if (ret == ESP_OK && frame_state == ESPFSP_DATA_PROTO_FRAME_OBTAINED && host_connected)
     {
-        ret = send_fb(data_proto, sock, data_proto->config->send_fb);
+        ret = send_fb(data_proto, sock, &data_proto->send_fb);
     }
 
     return ret;

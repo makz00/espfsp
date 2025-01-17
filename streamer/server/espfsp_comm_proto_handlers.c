@@ -138,35 +138,94 @@ esp_err_t espfsp_server_req_start_stream_handler(espfsp_comm_proto_t *comm_proto
 
     espfsp_comm_proto_req_start_stream_message_t send_msg;
     espfsp_comm_proto_t *primary_push_comm_proto = NULL;
+    uint32_t play_session_id = -123;
     uint32_t primary_push_session_id = -123;
     espfsp_frame_config_t primary_push_frame_config;
+    bool stream_started = false;
 
-    ret = handle_client_play_session_stream(
-        session_manager,
-        comm_proto,
-        received_msg->session_id,
-        &primary_push_comm_proto,
-        &primary_push_session_id,
-        true,
-        &primary_push_frame_config);
+    esp_err_t ret = espfsp_session_manager_take(session_manager);
+    if (ret == ESP_OK)
+    {
+        ret = espfsp_session_manager_get_session_id(session_manager, comm_proto, &play_session_id);
+        if (ret == ESP_OK && play_session_id == received_msg->session_id)
+        {
+            ret = espfsp_session_manager_get_primary_session(
+                session_manager, ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH, &primary_push_comm_proto);
+        }
+        if (ret == ESP_OK && primary_push_comm_proto != NULL)
+        {
+            ret = espfsp_session_manager_get_session_id(
+                session_manager, primary_push_comm_proto, &primary_push_session_id);
+        }
+        if (primary_push_comm_proto != NULL && primary_push_session_id != -123)
+        {
+            if (ret == ESP_OK)
+            {
+                ret = espfsp_session_manager_get_stream_state(
+                    session_manager, primary_push_comm_proto, &stream_started);
+            }
+            if (!stream_started)
+            {
+                if (ret == ESP_OK)
+                {
+                    ret = espfsp_session_manager_set_stream_state(session_manager, primary_push_comm_proto, true);
+                    if (ret == ESP_OK)
+                    {
+                        ret = espfsp_session_manager_set_stream_state(session_manager, comm_proto, true);
+                    }
+                }
+                if (ret == ESP_OK)
+                {
+                    ret = espfsp_session_manager_get_frame_config(
+                        session_manager, primary_push_comm_proto, &primary_push_frame_config);
+                }
+            }
+        }
+
+        espfsp_session_manager_release(session_manager);
+    }
 
     ESP_LOGE(TAG, "%d", __LINE__);
 
     LOG_IF_FAIL(ret)
-    if (ret == ESP_OK && primary_push_comm_proto != NULL && primary_push_session_id != -123)
+    if (ret == ESP_OK && primary_push_comm_proto != NULL && primary_push_session_id != -123 && !stream_started)
     {
         ESP_LOGE(TAG, "%d", __LINE__);
+
+        // Reconfigure receiver buffer if parameters changed
+        if (primary_push_frame_config.buffered_fbs != instance->receiver_buffer.config->buffered_fbs ||
+            primary_push_frame_config.fb_in_buffer_before_get != instance->receiver_buffer.config->fb_in_buffer_before_get ||
+            primary_push_frame_config.frame_max_len != instance->receiver_buffer.config->frame_max_len)
+        {
+            ret = espfsp_message_buffer_deinit(&instance->receiver_buffer);
+            if (ret == ESP_OK)
+            {
+                espfsp_receiver_buffer_config_t new_config = {
+                    .buffered_fbs = instance->config->frame_config.buffered_fbs,
+                    .fb_in_buffer_before_get = instance->config->frame_config.fb_in_buffer_before_get,
+                    .frame_max_len = instance->config->frame_config.frame_max_len,
+                };
+
+                ret = espfsp_message_buffer_init(&instance->receiver_buffer, &new_config);
+            }
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Receiver buffer reconfiguration failed");
+                return ret;
+            }
+        }
+
         send_msg.session_id = primary_push_session_id;
         ret = espfsp_comm_proto_start_stream(primary_push_comm_proto, &send_msg);
         if (ret == ESP_OK)
         {
             ESP_LOGE(TAG, "%d", __LINE__);
-            ret = espfsp_data_proto_start(&instance->client_push_data_proto);
+            ret = espfsp_data_proto_set_frame_params(&instance->client_play_data_proto, &primary_push_frame_config);
         }
         if (ret == ESP_OK)
         {
             ESP_LOGE(TAG, "%d", __LINE__);
-            ret = espfsp_data_proto_set_frame_params(&instance->client_play_data_proto, &primary_push_frame_config);
+            ret = espfsp_data_proto_start(&instance->client_push_data_proto);
         }
         if (ret == ESP_OK)
         {
@@ -258,51 +317,6 @@ esp_err_t espfsp_server_req_cam_set_params_handler(espfsp_comm_proto_t *comm_pro
     return ret;
 }
 
-esp_err_t espfsp_server_req_cam_get_params_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
-{
-    esp_err_t ret = ESP_OK;
-    espfsp_comm_req_cam_get_params_message_t *received_msg = (espfsp_comm_req_cam_get_params_message_t *) msg_content;
-    espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
-    espfsp_session_manager_t *session_manager = &instance->session_manager;
-
-    return ret;
-}
-
-static esp_err_t set_frame_config(espfsp_frame_config_t *frame_config, uint16_t param_id, uint32_t value)
-{
-    esp_err_t ret = ESP_OK;
-
-    espfsp_params_map_frame_param_t param;
-    ret = espfsp_params_map_frame_param_get_param(param_id, &param);
-    if (ret == ESP_OK)
-    {
-        switch (param)
-        {
-        case ESPFSP_PARAM_MAP_FRAME_PIXEL_FORMAT:
-            frame_config->pixel_format = (espfsp_pixformat_t) value;
-            ESP_LOGI(TAG, "Read pixel_format: %ld", value);
-            break;
-        case ESPFSP_PARAM_MAP_FRAME_FRAME_SIZE:
-            frame_config->frame_size = (espfsp_framesize_t) value;
-            ESP_LOGI(TAG, "Read frame_size: %ld", value);
-            break;
-        case ESPFSP_PARAM_MAP_FRAME_FRAME_MAX_LEN:
-            frame_config->frame_max_len = (uint32_t) value;
-            ESP_LOGI(TAG, "Read frame_max_len: %ld", value);
-            break;
-        case ESPFSP_PARAM_MAP_FRAME_FPS:
-            frame_config->fps = (uint16_t) value;
-            ESP_LOGI(TAG, "Read fps: %ld", value);
-            break;
-        default:
-            ESP_LOGE(TAG, "Not handled frame parameter");
-            ret = ESP_FAIL;
-        }
-    }
-
-    return ret;
-}
-
 esp_err_t espfsp_server_req_frame_set_params_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
 {
     esp_err_t ret = ESP_OK;
@@ -339,7 +353,7 @@ esp_err_t espfsp_server_req_frame_set_params_handler(espfsp_comm_proto_t *comm_p
             }
             if (ret == ESP_OK)
             {
-                ret = set_frame_config(&primary_push_frame_config, received_msg->param_id, received_msg->value);
+                ret = espfsp_params_map_set_frame_config(&primary_push_frame_config, received_msg->param_id, received_msg->value);
             }
             if (ret == ESP_OK)
             {
@@ -366,16 +380,6 @@ esp_err_t espfsp_server_req_frame_set_params_handler(espfsp_comm_proto_t *comm_p
             ret = espfsp_data_proto_set_frame_params(&instance->client_play_data_proto, &primary_push_frame_config);
         }
     }
-
-    return ret;
-}
-
-esp_err_t espfsp_server_req_frame_get_params_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
-{
-    esp_err_t ret = ESP_OK;
-    espfsp_comm_req_frame_get_params_message_t *received_msg = (espfsp_comm_req_frame_get_params_message_t *) msg_content;
-    espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
-    espfsp_session_manager_t *session_manager = &instance->session_manager;
 
     return ret;
 }

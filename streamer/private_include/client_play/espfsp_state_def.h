@@ -23,6 +23,19 @@ typedef struct {
     bool stream_started;
 } espfsp_client_play_session_data_t;
 
+typedef struct {
+    QueueHandle_t consumerIdQueue;
+    QueueHandle_t producerValQueue;
+} espfsp_get_req_synch_data_t;
+
+typedef uint32_t espfsp_sources_consumer_id_t;
+
+typedef struct {
+    uint32_t consumer_id;
+    char sources_names_buf[3][30];
+    int sources_names_len;
+} espfsp_sources_producer_val_t;
+
 typedef struct
 {
     TaskHandle_t data_task_handle;
@@ -35,7 +48,7 @@ typedef struct
     espfsp_comm_proto_t comm_proto;
     espfsp_data_proto_t data_proto;
 
-    QueueHandle_t onSourcesCb;
+    espfsp_get_req_synch_data_t get_req_sources_synch_data;
 
     espfsp_client_play_session_data_t session_data;
 } espfsp_client_play_instance_t;

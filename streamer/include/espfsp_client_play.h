@@ -13,9 +13,10 @@
 
 #include "espfsp_config.h"
 
-typedef void * espfsp_client_play_handler_t;
+#define SOURCE_NAMES_MAX 3
+#define SOURCE_NAME_LEN_MAX 30
 
-typedef void (*__espfsp_on_sources_cb)(const char sources_names[][30] , int sources_count);
+typedef void * espfsp_client_play_handler_t;
 
 typedef struct
 {
@@ -28,8 +29,6 @@ typedef struct
     struct esp_ip4_addr remote_addr;
 
     espfsp_frame_config_t frame_config;
-    espfsp_cam_config_t cam_config;
-    uint16_t buffered_fbs;
 } espfsp_client_play_config_t;
 
 espfsp_client_play_handler_t espfsp_client_play_init(const espfsp_client_play_config_t *config);
@@ -48,8 +47,10 @@ esp_err_t espfsp_client_play_reconfigure_frame(espfsp_client_play_handler_t hand
 
 esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handler, espfsp_cam_config_t *cam_config);
 
-esp_err_t espfsp_client_play_reconfigure_protocol_params(espfsp_client_play_handler_t handler);
+esp_err_t espfsp_client_play_get_sources_timeout(
+    espfsp_client_play_handler_t handler,
+    char sources_names_buf[SOURCE_NAMES_MAX][SOURCE_NAME_LEN_MAX],
+    int *sources_names_len,
+    uint32_t timeout_ms);
 
-esp_err_t espfsp_client_play_get_sources(espfsp_client_play_handler_t handler, __espfsp_on_sources_cb cb);
-
-esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler, const char source_name[30]);
+esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler, const char source_name[SOURCE_NAME_LEN_MAX]);

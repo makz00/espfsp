@@ -8,7 +8,7 @@
 #include "sys/time.h"
 
 #include "espfsp_cam_config.h"
-#include "espfsp_frame_config.h"
+// #include "espfsp_frame_config.h"
 
 typedef int esp_err_t;
 
@@ -50,7 +50,6 @@ typedef esp_err_t (*__espfsp_start_cam)(const espfsp_cam_config_t *cam_config, c
 typedef esp_err_t (*__espfsp_stop_cam)();
 typedef esp_err_t (*__espfsp_send_frame)(espfsp_fb_t *fb, espfsp_send_frame_cb_state_t *state);
 typedef esp_err_t (*__espfsp_send_reconf_cam)(const espfsp_cam_config_t *cam_config);
-typedef esp_err_t (*__espfsp_send_reconf_frame)(const espfsp_frame_config_t *frame_config);
 
 typedef struct
 {
@@ -58,5 +57,4 @@ typedef struct
     __espfsp_stop_cam stop_cam;
     __espfsp_send_frame send_frame;
     __espfsp_send_reconf_cam reconf_cam;
-    __espfsp_send_reconf_frame reconf_frame;
 } espfsp_client_push_cb_t;

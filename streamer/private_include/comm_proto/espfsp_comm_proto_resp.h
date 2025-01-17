@@ -14,10 +14,9 @@ typedef enum {
     ESPFSP_COMM_RESP_ACK = 0x03,
     ESPFSP_COMM_RESP_CAM_PARAMS_RESP = 0x04,
     ESPFSP_COMM_RESP_FRAME_PARAMS_RESP = 0x05,
-    ESPFSP_COMM_RESP_PROTO_PARAMS_RESP = 0x06,
-    ESPFSP_COMM_RESP_SOURCES_RESP = 0x07,
+    ESPFSP_COMM_RESP_SOURCES_RESP = 0x06,
 
-    ESPFSP_COMM_RESP_MAX_NUMBER = 0x08,
+    ESPFSP_COMM_RESP_MAX_NUMBER = 0x07,
 
     // ESPFSP_COMM_RESP_STREAM_STATUS = 0xXX,
     // ESPFSP_COMM_RESP_ERROR_REPORT = 0xXX,
@@ -52,13 +51,6 @@ typedef struct {
     uint16_t param_id;
     uint32_t value;
 } espfsp_comm_resp_frame_params_resp_message_t;
-
-// // For ESPFSP_COMM_RESP_PROTO_PARAMS_RESP
-typedef struct {
-    uint32_t session_id;
-    uint16_t param_id;
-    uint32_t value;
-} espfsp_comm_resp_proto_params_resp_message_t;
 
 // // For ESPFSP_COMM_RESP_SOURCES_RESP
 typedef struct {

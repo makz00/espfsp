@@ -148,17 +148,24 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
 
     esp_err_t err = ESP_OK;
 
-    instance->onSourcesCb = xQueueCreate(3, sizeof(__espfsp_on_sources_cb));
-    if (instance->onSourcesCb == NULL)
+    instance->get_req_sources_synch_data.consumerIdQueue = xQueueCreate(3, sizeof(espfsp_sources_consumer_id_t));
+    if (instance->get_req_sources_synch_data.consumerIdQueue == NULL)
     {
-        ESP_LOGE(TAG, "Cannot initialize on sources callback queue");
+        ESP_LOGE(TAG, "Cannot initialize queue for consumer id");
+        return NULL;
+    }
+
+    instance->get_req_sources_synch_data.producerValQueue = xQueueCreate(3, sizeof(espfsp_sources_producer_val_t));
+    if (instance->get_req_sources_synch_data.producerValQueue == NULL)
+    {
+        ESP_LOGE(TAG, "Cannot initialize queue for producer val");
         return NULL;
     }
 
     espfsp_receiver_buffer_config_t receiver_buffer_config = {
-        .buffered_fbs = config->buffered_fbs,
+        .buffered_fbs = config->frame_config.buffered_fbs,
         .frame_max_len = config->frame_config.frame_max_len,
-        .fb_in_buffer_before_get = 0,
+        .fb_in_buffer_before_get = config->frame_config.fb_in_buffer_before_get,
     };
 
     err = espfsp_message_buffer_init(&instance->receiver_buffer, &receiver_buffer_config);
@@ -253,7 +260,8 @@ static esp_err_t remove_client_play(espfsp_client_play_instance_t *instance)
         return ret;
     }
 
-    vQueueDelete(instance->onSourcesCb);
+    vQueueDelete(instance->get_req_sources_synch_data.consumerIdQueue);
+    vQueueDelete(instance->get_req_sources_synch_data.producerValQueue);
     vSemaphoreDelete(instance->session_data.mutex);
 
     free(instance->config);
@@ -344,24 +352,48 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
         return ESP_FAIL;
     }
 
-    if (!instance->session_data.active)
+    if (!instance->session_data.active || instance->session_data.stream_started)
     {
         if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
         {
             ESP_LOGE(TAG, "Cannot give semaphore");
             return ESP_FAIL;
         }
-        ESP_LOGE(TAG, "Session with server has not been established");
+
+        ESP_LOGE(TAG, "Session state is not correct for this request");
         return ESP_FAIL;
     }
 
     instance->session_data.stream_started = true;
-
     msg.session_id = instance->session_data.session_id;
+
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");
         return ESP_FAIL;
+    }
+
+    // Reconfigure receiver buffer if parameters changed
+    if (instance->config->frame_config.buffered_fbs != instance->receiver_buffer.config->buffered_fbs ||
+        instance->config->frame_config.fb_in_buffer_before_get != instance->receiver_buffer.config->fb_in_buffer_before_get ||
+        instance->config->frame_config.frame_max_len != instance->receiver_buffer.config->frame_max_len)
+    {
+        ret = espfsp_message_buffer_deinit(&instance->receiver_buffer);
+        if (ret == ESP_OK)
+        {
+            espfsp_receiver_buffer_config_t new_config = {
+                .buffered_fbs = instance->config->frame_config.buffered_fbs,
+                .fb_in_buffer_before_get = instance->config->frame_config.fb_in_buffer_before_get,
+                .frame_max_len = instance->config->frame_config.frame_max_len,
+            };
+
+            ret = espfsp_message_buffer_init(&instance->receiver_buffer, &new_config);
+        }
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Receiver buffer reconfiguration failed");
+            return ret;
+        }
     }
 
     ret = espfsp_data_proto_start(&instance->data_proto);
@@ -392,13 +424,13 @@ esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler)
             ESP_LOGE(TAG, "Cannot give semaphore");
             return ESP_FAIL;
         }
-        ESP_LOGE(TAG, "Session with server has not been established");
+        ESP_LOGE(TAG, "Session state is not correct for this request");
         return ESP_FAIL;
     }
 
     instance->session_data.stream_started = false;
-
     msg.session_id = instance->session_data.session_id;
+
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");
@@ -433,87 +465,76 @@ esp_err_t espfsp_client_play_reconfigure_frame(espfsp_client_play_handler_t hand
             ESP_LOGE(TAG, "Cannot give semaphore");
             return ESP_FAIL;
         }
-        ESP_LOGE(TAG, "Session with server has not been established");
+        ESP_LOGE(TAG, "Session state is not correct for this request");
         return ESP_FAIL;
     }
 
     msg.session_id = instance->session_data.session_id;
+
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");
         return ESP_FAIL;
     }
 
-    if (frame_config->fps != instance->config->frame_config.fps)
+    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_FPS, &msg.param_id);
+    if (ret != ESP_OK)
     {
-        ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_FPS, &msg.param_id);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
-        msg.value = (uint32_t) frame_config->fps;
+        return ret;
+    }
+    msg.value = (uint32_t) frame_config->fps;
 
-        instance->config->frame_config.fps = frame_config->fps;
+    instance->config->frame_config.fps = frame_config->fps;
 
-        ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
+    ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
+    {
+        return ret;
     }
 
-    if (frame_config->frame_max_len != instance->config->frame_config.frame_max_len)
+    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_FRAME_MAX_LEN, &msg.param_id);
+    if (ret != ESP_OK)
     {
-        ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_FRAME_MAX_LEN, &msg.param_id);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
-        msg.value = (uint32_t) frame_config->frame_max_len;
+        return ret;
+    }
+    msg.value = (uint32_t) frame_config->frame_max_len;
 
-        instance->config->frame_config.frame_max_len = frame_config->frame_max_len;
+    instance->config->frame_config.frame_max_len = frame_config->frame_max_len;
 
-        ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
+    ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
+    {
+        return ret;
     }
 
-    if (frame_config->frame_size != instance->config->frame_config.frame_size)
+    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_BUFFERED_FBS, &msg.param_id);
+    if (ret != ESP_OK)
     {
-        ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_FRAME_SIZE, &msg.param_id);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
-        msg.value = (uint32_t) frame_config->frame_size;
+        return ret;
+    }
+    msg.value = (uint32_t) frame_config->buffered_fbs;
 
-        instance->config->frame_config.frame_size = frame_config->frame_size;
+    instance->config->frame_config.buffered_fbs = frame_config->buffered_fbs;
 
-        ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
+    ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
+    {
+        return ret;
     }
 
-    if (frame_config->pixel_format != instance->config->frame_config.pixel_format)
+    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_FB_IN_BUFFER_BEFORE_GET, &msg.param_id);
+    if (ret != ESP_OK)
     {
-        ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_PIXEL_FORMAT, &msg.param_id);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
-        msg.value = (uint32_t) frame_config->pixel_format;
+        return ret;
+    }
+    msg.value = (uint32_t) frame_config->fb_in_buffer_before_get;
 
-        instance->config->frame_config.pixel_format = frame_config->pixel_format;
+    instance->config->frame_config.fb_in_buffer_before_get = frame_config->fb_in_buffer_before_get;
 
-        ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
+    ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
+    {
+        return ret;
     }
 
     return ret;
@@ -538,82 +559,99 @@ esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handle
             ESP_LOGE(TAG, "Cannot give semaphore");
             return ESP_FAIL;
         }
-        ESP_LOGE(TAG, "Session with server has not been established");
+        ESP_LOGE(TAG, "Session state is not correct for this request");
         return ESP_FAIL;
     }
 
     msg.session_id = instance->session_data.session_id;
+
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");
         return ESP_FAIL;
     }
 
-    if (cam_config->cam_fb_count != instance->config->cam_config.cam_fb_count)
+    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_FB_COUNT, &msg.param_id);
+    if (ret != ESP_OK)
     {
-        ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_FB_COUNT, &msg.param_id);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
-        msg.value = (uint32_t) cam_config->cam_fb_count;
-
-        instance->config->cam_config.cam_fb_count = cam_config->cam_fb_count;
-
-        ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
+        return ret;
     }
 
-    if (cam_config->cam_grab_mode != instance->config->cam_config.cam_grab_mode)
+    msg.value = (uint32_t) cam_config->cam_fb_count;
+
+    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
     {
-        ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_GRAB_MODE, &msg.param_id);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
-        msg.value = (uint32_t) cam_config->cam_grab_mode;
-
-        instance->config->cam_config.cam_grab_mode = cam_config->cam_grab_mode;
-
-        ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
+        return ret;
     }
 
-    if (cam_config->cam_jpeg_quality != instance->config->cam_config.cam_jpeg_quality)
+    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_GRAB_MODE, &msg.param_id);
+    if (ret != ESP_OK)
     {
-        ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_JPEG_QUALITY, &msg.param_id);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
-        msg.value = (uint32_t) cam_config->cam_jpeg_quality;
+        return ret;
+    }
 
-        instance->config->cam_config.cam_jpeg_quality = cam_config->cam_jpeg_quality;
+    msg.value = (uint32_t) cam_config->cam_grab_mode;
 
-        ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
-        if (ret != ESP_OK)
-        {
-            return ret;
-        }
+    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_JPEG_QUALITY, &msg.param_id);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+    msg.value = (uint32_t) cam_config->cam_jpeg_quality;
+
+
+    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_PIXEL_FORMAT, &msg.param_id);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+    msg.value = (uint32_t) cam_config->cam_pixel_format;
+
+
+    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_FRAME_SIZE, &msg.param_id);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+    msg.value = (uint32_t) cam_config->cam_frame_size;
+
+
+    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
+    {
+        return ret;
     }
 
     return ret;
 }
 
-esp_err_t espfsp_client_play_reconfigure_protocol_params(espfsp_client_play_handler_t handler)
+esp_err_t espfsp_client_play_get_sources_timeout(
+    espfsp_client_play_handler_t handler,
+    char sources_names_buf[SOURCE_NAMES_MAX][SOURCE_NAME_LEN_MAX],
+    int *sources_names_len,
+    uint32_t timeout_ms)
 {
-    ESP_LOGE(TAG, "NOT IMPLEMENTED");
-    return ESP_FAIL;
-}
+    static uint32_t next_consumer_id = 1001;
 
-esp_err_t espfsp_client_play_get_sources(espfsp_client_play_handler_t handler, __espfsp_on_sources_cb cb)
-{
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
     espfsp_comm_req_source_get_message_t msg;
 
@@ -630,7 +668,7 @@ esp_err_t espfsp_client_play_get_sources(espfsp_client_play_handler_t handler, _
             ESP_LOGE(TAG, "Cannot give semaphore");
             return ESP_FAIL;
         }
-        ESP_LOGE(TAG, "Session with server has not been established");
+        ESP_LOGE(TAG, "Session state is not correct for this request");
         return ESP_FAIL;
     }
 
@@ -641,16 +679,62 @@ esp_err_t espfsp_client_play_get_sources(espfsp_client_play_handler_t handler, _
         return ESP_FAIL;
     }
 
-    if (xQueueSend(instance->onSourcesCb, &cb, 0) != pdPASS)
+    uint32_t this_consumer_id = next_consumer_id++;
+
+    if (xQueueSend(instance->get_req_sources_synch_data.consumerIdQueue, &this_consumer_id, 0) != pdPASS)
     {
-        ESP_LOGE(TAG, "Cannot send callback to queue");
+        ESP_LOGE(TAG, "Cannot send consumer ID to queue");
         return ESP_FAIL;
     }
 
-    return espfsp_comm_proto_source_get(&instance->comm_proto, &msg);
+    esp_err_t ret = espfsp_comm_proto_source_get(&instance->comm_proto, &msg);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    espfsp_sources_producer_val_t producer_val;
+    bool value_produced = false;
+    BaseType_t xStatus;
+
+    while (timeout_ms > 0)
+    {
+        const int partial_timeout_ms = 20;
+
+        BaseType_t xStatus = xQueuePeek(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0);
+
+        if (xStatus == pdTRUE && producer_val.consumer_id == this_consumer_id)
+        {
+            value_produced = true;
+            break;
+        }
+        else
+        {
+            vTaskDelay(partial_timeout_ms / portTICK_PERIOD_MS);
+            timeout_ms -= partial_timeout_ms;
+        }
+    }
+
+    if (!value_produced)
+    {
+        ESP_LOGE(TAG, "Response was not received");
+        return ESP_FAIL;
+    }
+
+    BaseType_t xStatus = xQueueReceive(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0);
+    if (xStatus != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot receive producent value from queue");
+        return ESP_FAIL;
+    }
+
+    *sources_names_len = producer_val.sources_names_len;
+    memcpy(sources_names_buf, producer_val.sources_names_buf, sizeof(sources_names_buf));
+
+    return ESP_OK;
 }
 
-esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler, const char source_name[30])
+esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler, const char source_name[SOURCE_NAME_LEN_MAX])
 {
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
     espfsp_comm_req_source_set_message_t msg;
@@ -661,18 +745,19 @@ esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler, co
         return ESP_FAIL;
     }
 
-    if (!instance->session_data.active)
+    if (!instance->session_data.active && instance->session_data.stream_started)
     {
         if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
         {
             ESP_LOGE(TAG, "Cannot give semaphore");
             return ESP_FAIL;
         }
-        ESP_LOGE(TAG, "Session with server has not been established");
+        ESP_LOGE(TAG, "Session state is not correct for this request");
         return ESP_FAIL;
     }
 
     msg.session_id = instance->session_data.session_id;
+
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");

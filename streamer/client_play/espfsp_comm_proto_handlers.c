@@ -28,14 +28,12 @@ esp_err_t espfsp_client_play_req_session_terminate_handler(
         ESP_LOGE(TAG, "Cannot take semaphore");
         return ESP_FAIL;
     }
-
     if (instance->session_data.active && instance->session_data.session_id == msg->session_id)
     {
         instance->session_data.active = false;
         instance->session_data.session_id = -1;
         instance->session_data.stream_started = false;
     }
-
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");
@@ -89,13 +87,11 @@ esp_err_t espfsp_client_play_resp_session_ack_handler(
         ESP_LOGE(TAG, "Cannot take semaphore");
         return ESP_FAIL;
     }
-
     if (!instance->session_data.active)
     {
         instance->session_data.active = true;
         instance->session_data.session_id = msg->session_id;
     }
-
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");
@@ -112,7 +108,8 @@ esp_err_t espfsp_client_play_resp_sources_handler(
     espfsp_comm_resp_sources_resp_message_t *msg = (espfsp_comm_resp_sources_resp_message_t *) msg_content;
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) ctx;
 
-    __espfsp_on_sources_cb cb;
+    uint32_t consumer_id;
+    espfsp_sources_producer_val_t producer_val;
     bool handle_resp = false;
 
     if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
@@ -131,14 +128,31 @@ esp_err_t espfsp_client_play_resp_sources_handler(
     }
     if (handle_resp)
     {
-        if (xQueueReceive(instance->onSourcesCb, &cb, 0) == pdTRUE)
+        if (xQueueReceive(instance->get_req_sources_synch_data.consumerIdQueue, &consumer_id, 0) != pdTRUE)
         {
-            cb(msg->source_names, msg->num_sources);
-        }
-        else
-        {
+            ESP_LOGE(TAG, "No consumer id passed");
             ret = ESP_FAIL;
-            ESP_LOGE(TAG, "No callback to handle sources response");
+        }
+        if (ret == ESP_OK)
+        {
+            producer_val.consumer_id = consumer_id;
+            producer_val.sources_names_len = msg->source_names;
+            memcpy(producer_val.sources_names_buf, msg->source_names, sizeof(producer_val.sources_names_buf));
+
+            if (xQueueSend(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0) != pdTRUE)
+            {
+                ESP_LOGE(TAG, "Cannot sent produced value. First element from FIFO will be dropped");
+                espfsp_sources_producer_val_t to_drop_producer_val;
+                if (xQueueReceive(instance->get_req_sources_synch_data.producerValQueue, &to_drop_producer_val, 0) != pdTRUE)
+                {
+                    ESP_LOGI(TAG, "Cannot drop first element from FIFO");
+                }
+                if (xQueueSend(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0) != pdTRUE)
+                {
+                    ESP_LOGE(TAG, "Cannot send produced value after drop");
+                    ret = ESP_FAIL;
+                }
+            }
         }
     }
 

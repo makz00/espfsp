@@ -20,7 +20,6 @@ esp_err_t espfsp_client_play_data_protos_init(espfsp_client_play_instance_t *ins
     config.type = ESPFSP_DATA_PROTO_TYPE_RECV;
     config.mode = ESPFSP_DATA_PROTO_MODE_NAT;
     config.recv_buffer = &instance->receiver_buffer;
-    config.send_fb = NULL;
     config.send_frame_callback = NULL;
     config.send_frame_ctx = NULL;
     config.frame_config = &instance->config->frame_config;

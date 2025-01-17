@@ -91,8 +91,6 @@ esp_err_t espfsp_comm_proto_cam_set_params(espfsp_comm_proto_t *comm_proto, espf
 esp_err_t espfsp_comm_proto_cam_get_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_cam_get_params_message_t *msg);
 esp_err_t espfsp_comm_proto_frame_set_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_frame_set_params_message_t *msg);
 esp_err_t espfsp_comm_proto_frame_get_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_frame_get_params_message_t *msg);
-esp_err_t espfsp_comm_proto_proto_set_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_proto_set_params_message_t *msg);
-esp_err_t espfsp_comm_proto_proto_get_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_proto_get_params_message_t *msg);
 esp_err_t espfsp_comm_proto_source_set(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_source_set_message_t *msg);
 esp_err_t espfsp_comm_proto_source_get(espfsp_comm_proto_t *comm_proto, espfsp_comm_req_source_get_message_t *msg);
 // Actions for requests --- END
@@ -103,6 +101,5 @@ esp_err_t espfsp_comm_proto_session_pong(espfsp_comm_proto_t *comm_proto, espfsp
 esp_err_t espfsp_comm_proto_ack(espfsp_comm_proto_t *comm_proto, espfsp_comm_proto_resp_ack_message_t *msg);
 esp_err_t espfsp_comm_proto_cam_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_cam_params_resp_message_t *msg);
 esp_err_t espfsp_comm_proto_frame_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_frame_params_resp_message_t *msg);
-esp_err_t espfsp_comm_proto_proto_params(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_proto_params_resp_message_t *msg);
 esp_err_t espfsp_comm_proto_sources(espfsp_comm_proto_t *comm_proto, espfsp_comm_resp_sources_resp_message_t *msg);
 // Actions for responses --- END
