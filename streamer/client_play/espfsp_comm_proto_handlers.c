@@ -137,7 +137,7 @@ esp_err_t espfsp_client_play_resp_sources_handler(
         {
             producer_val.consumer_id = consumer_id;
             producer_val.sources_names_len = msg->num_sources;
-            memcpy(producer_val.sources_names_buf, msg->source_names, sizeof(producer_val.sources_names_buf));
+            memcpy(producer_val.sources_names_buf, msg->source_names, SOURCE_NAME_LEN_MAX);
 
             if (xQueueSend(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0) != pdTRUE)
             {

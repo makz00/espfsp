@@ -571,7 +571,7 @@ esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handle
         return ESP_FAIL;
     }
 
-    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_FB_COUNT, &msg.param_id);
+    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_FB_COUNT, &msg.param_id);
     if (ret != ESP_OK)
     {
         return ret;
@@ -585,7 +585,7 @@ esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handle
         return ret;
     }
 
-    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_GRAB_MODE, &msg.param_id);
+    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_GRAB_MODE, &msg.param_id);
     if (ret != ESP_OK)
     {
         return ret;
@@ -599,7 +599,7 @@ esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handle
         return ret;
     }
 
-    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_JPEG_QUALITY, &msg.param_id);
+    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_JPEG_QUALITY, &msg.param_id);
     if (ret != ESP_OK)
     {
         return ret;
@@ -613,7 +613,7 @@ esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handle
         return ret;
     }
 
-    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_PIXEL_FORMAT, &msg.param_id);
+    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_PIXEL_FORMAT, &msg.param_id);
     if (ret != ESP_OK)
     {
         return ret;
@@ -627,7 +627,7 @@ esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handle
         return ret;
     }
 
-    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_CAM_FRAME_SIZE, &msg.param_id);
+    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_FRAME_SIZE, &msg.param_id);
     if (ret != ESP_OK)
     {
         return ret;
@@ -728,16 +728,22 @@ esp_err_t espfsp_client_play_get_sources_timeout(
         return ESP_FAIL;
     }
 
+    int src_to_copy = 0;
+
     if (*sources_names_len >= producer_val.sources_names_len)
     {
-        memcpy(sources_names_buf, producer_val.sources_names_buf, producer_val.sources_names_len);
-        *sources_names_len = producer_val.sources_names_len;
+        src_to_copy = producer_val.sources_names_len;
     }
     else
     {
-        memcpy(sources_names_buf, producer_val.sources_names_buf, *sources_names_len);
-        *sources_names_len = producer_val.sources_names_len;
+        src_to_copy = *sources_names_len;
     }
+
+    for (int i = 0; i < src_to_copy; i++)
+    {
+        memcpy(sources_names_buf[i], producer_val.sources_names_buf[i], SOURCE_NAME_LEN_MAX);
+    }
+    *sources_names_len = src_to_copy;
 
     return ESP_OK;
 }

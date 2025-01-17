@@ -493,7 +493,11 @@ esp_err_t espfsp_server_req_source_get_handler(espfsp_comm_proto_t *comm_proto, 
     {
         send_msg.session_id = play_session_id;
         send_msg.num_sources = (uint8_t) active_push_comm_protos_count;
-        memcpy(send_msg.source_names, source_names, sizeof(source_names));
+
+        for (int i = 0; i < active_push_comm_protos_count; i++)
+        {
+            memcpy(send_msg.source_names[i], source_names[i], sizeof(source_names[i]));
+        }
 
         ret = espfsp_comm_proto_sources(comm_proto, &send_msg);
     }

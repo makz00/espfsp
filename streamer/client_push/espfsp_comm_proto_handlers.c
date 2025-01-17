@@ -81,17 +81,25 @@ esp_err_t espfsp_client_push_req_start_stream_handler(espfsp_comm_proto_t *comm_
     if (is_session_camera_not_started_for_id(&instance->session_data, received_msg->session_id))
     {
         ret = instance->config->cb.start_cam(&instance->config->cam_config, &instance->config->frame_config);
-        if (ret == ESP_OK)
+        if (ret != ESP_OK)
         {
-            ret = espfsp_data_proto_set_frame_params(&instance->data_proto, &instance->config->frame_config);
+            ESP_LOGW(TAG, "Start camera callback failed. Stream will not be started");
+            ret = ESP_OK;
         }
-        if (ret == ESP_OK)
+        else
         {
-            ret = espfsp_data_proto_start(&instance->data_proto);
-        }
-        if (ret == ESP_OK)
-        {
-            start_session_camera(&instance->session_data);
+            if (ret == ESP_OK)
+            {
+                ret = espfsp_data_proto_set_frame_params(&instance->data_proto, &instance->config->frame_config);
+            }
+            if (ret == ESP_OK)
+            {
+                ret = espfsp_data_proto_start(&instance->data_proto);
+            }
+            if (ret == ESP_OK)
+            {
+                start_session_camera(&instance->session_data);
+            }
         }
     }
     else
@@ -114,6 +122,11 @@ esp_err_t espfsp_client_push_req_stop_stream_handler(espfsp_comm_proto_t *comm_p
         if (ret == ESP_OK)
         {
             ret = instance->config->cb.stop_cam();
+            if (ret != ESP_OK)
+            {
+                ESP_LOGW(TAG, "Stop camera callback failed");
+                ret = ESP_OK;
+            }
         }
         if (ret == ESP_OK)
         {
@@ -161,6 +174,11 @@ esp_err_t espfsp_client_push_req_cam_set_params_handler(
         {
             ret = instance->config->cb.reconf_cam(&instance->config->cam_config);
         }
+        if(ret != ESP_OK)
+        {
+            ESP_LOGW(TAG, "Reconfiguration camera callback failed");
+            ret = ESP_OK;
+        }
     }
     else
     {
@@ -207,6 +225,11 @@ esp_err_t espfsp_client_push_connection_stop(espfsp_comm_proto_t *comm_proto, vo
             if (ret == ESP_OK)
             {
                 ret = instance->config->cb.stop_cam();
+                if (ret != ESP_OK)
+                {
+                    ESP_LOGW(TAG, "Stop camera callback failed");
+                    ret = ESP_OK;
+                }
             }
             if (ret == ESP_OK)
             {

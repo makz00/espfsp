@@ -45,9 +45,16 @@ static esp_err_t update_frame_config(espfsp_data_proto_t *data_proto, espfsp_fra
 
     memcpy(&data_proto->frame_config, frame_config, sizeof(espfsp_frame_config_t));
 
-    data_proto->frame_interval_us = 1000000ULL / frame_config->fps;
+    if (frame_config->fps == 0)
+    {
+        ESP_LOGE(TAG, "FPS cannot be 0");
+        return ESP_FAIL;
+    }
+
+    data_proto->frame_interval_us = (uint64_t) (1000 / frame_config->fps) << 10;
 
     ESP_LOGI(TAG, "FPS updated to: %d", frame_config->fps);
+    ESP_LOGI(TAG, "Interval set to: %lld", data_proto->frame_interval_us);
 
     return ESP_OK;
 }
