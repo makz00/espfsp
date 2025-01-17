@@ -16,7 +16,7 @@
 
 #include "server/espfsp_comm_proto_conf.h"
 
-static const char *TAG = "ESPFSP_SERVER_COMM_PROTO_CONF";
+// static const char *TAG = "ESPFSP_SERVER_COMM_PROTO_CONF";
 
 esp_err_t espfsp_server_comm_protos_init(espfsp_server_instance_t *instance)
 {

@@ -11,7 +11,7 @@
 
 #include "client_play/espfsp_data_proto_conf.h"
 
-static const char *TAG = "ESPFSP_CLIENT_PLAY_DATA_PROTO_CONF";
+// static const char *TAG = "ESPFSP_CLIENT_PLAY_DATA_PROTO_CONF";
 
 esp_err_t espfsp_client_play_data_protos_init(espfsp_client_play_instance_t *instance)
 {

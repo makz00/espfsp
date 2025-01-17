@@ -16,7 +16,7 @@
 #include "data_proto/espfsp_data_signal.h"
 #include "data_proto/espfsp_data_recv_proto.h"
 
-static const char *TAG = "ESPFSP_DATA_RECIVE_PROTOCOL";
+// static const char *TAG = "ESPFSP_DATA_RECIVE_PROTOCOL";
 
 static struct timeval recv_timeout = {
     .tv_sec = 0,

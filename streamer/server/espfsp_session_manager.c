@@ -357,7 +357,7 @@ esp_err_t espfsp_session_manager_get_session_name(
         ESP_LOGE(TAG, "Get session name failed");
     }
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t espfsp_session_manager_get_session_type(
@@ -377,7 +377,7 @@ esp_err_t espfsp_session_manager_get_session_type(
         ESP_LOGE(TAG, "Get session type failed");
     }
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t espfsp_session_manager_set_stream_state(
@@ -397,7 +397,7 @@ esp_err_t espfsp_session_manager_set_stream_state(
         ESP_LOGE(TAG, "Set stream state failed");
     }
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t espfsp_session_manager_get_stream_state(
@@ -417,7 +417,7 @@ esp_err_t espfsp_session_manager_get_stream_state(
         ESP_LOGE(TAG, "Get stream state failed");
     }
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t espfsp_session_manager_get_frame_config(
@@ -437,7 +437,7 @@ esp_err_t espfsp_session_manager_get_frame_config(
         ESP_LOGE(TAG, "Get frame config failed");
     }
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t espfsp_session_manager_set_frame_config(
@@ -457,7 +457,7 @@ esp_err_t espfsp_session_manager_set_frame_config(
         ESP_LOGE(TAG, "Set frame config failed");
     }
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t espfsp_session_manager_get_primary_session(

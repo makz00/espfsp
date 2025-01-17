@@ -17,7 +17,7 @@
 
 #include "server/espfsp_data_proto_conf.h"
 
-static const char *TAG = "ESPFSP_SERVER_DATA_PROTO_CONF";
+// static const char *TAG = "ESPFSP_SERVER_DATA_PROTO_CONF";
 
 static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_frame_state_t *state)
 {
