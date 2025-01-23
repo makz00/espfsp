@@ -30,7 +30,6 @@ static esp_err_t get_last_signal(int sock, uint8_t *signal, struct sockaddr_in *
 
     ret = espfsp_receive_from_block(
         sock, (char *) signal, sizeof(uint8_t), &received_bytes, &recv_timeout, addr, addr_len);
-    // ret = espfsp_receive_bytes_from(sock, (char *) signal, sizeof(uint8_t), addr, addr_len);
     if (ret == ESP_OK && received_bytes == 0)
     {
         *signal = NAT_NO_SIGNAL_VAL;

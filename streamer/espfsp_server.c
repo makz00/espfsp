@@ -229,7 +229,8 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
     espfsp_receiver_buffer_config_t receiver_buffer_config = {
         .buffered_fbs = config->frame_config.buffered_fbs,
         .frame_max_len = config->frame_config.frame_max_len,
-        .fb_in_buffer_before_get = config->frame_config.fb_in_buffer_before_get,
+        .fb_in_buffer_before_get = 0,
+        .fps = config->frame_config.fps,
     };
 
     err = espfsp_message_buffer_init(&instance->receiver_buffer, &receiver_buffer_config);

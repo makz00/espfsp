@@ -26,8 +26,8 @@ static esp_err_t send_fb(espfsp_data_proto_t *data_proto, int sock, espfsp_fb_t 
     ret = espfsp_send_whole_fb_within(sock, send_fb, data_proto->frame_interval_us);
     if (ret == ESP_OK)
     {
-        ESP_LOGI(TAG, "Interval time: %lldms", data_proto->frame_interval_us >> 10);
-        ESP_LOGI(TAG, "Send time: %lldms", (current_time - data_proto->last_traffic) >> 10);
+        // ESP_LOGI(TAG, "Interval time: %lldms", data_proto->frame_interval_us >> 10);
+        // ESP_LOGI(TAG, "Send time: %lldms", (current_time - data_proto->last_traffic) >> 10);
 
         data_proto->last_traffic = current_time;
     }

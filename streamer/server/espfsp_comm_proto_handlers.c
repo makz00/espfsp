@@ -195,15 +195,17 @@ esp_err_t espfsp_server_req_start_stream_handler(espfsp_comm_proto_t *comm_proto
         // Reconfigure receiver buffer if parameters changed
         if (primary_push_frame_config.buffered_fbs != instance->receiver_buffer.config->buffered_fbs ||
             primary_push_frame_config.fb_in_buffer_before_get != instance->receiver_buffer.config->fb_in_buffer_before_get ||
-            primary_push_frame_config.frame_max_len != instance->receiver_buffer.config->frame_max_len)
+            primary_push_frame_config.frame_max_len != instance->receiver_buffer.config->frame_max_len ||
+            primary_push_frame_config.fps != instance->receiver_buffer.config->fps)
         {
             ret = espfsp_message_buffer_deinit(&instance->receiver_buffer);
             if (ret == ESP_OK)
             {
                 espfsp_receiver_buffer_config_t new_config = {
-                    .buffered_fbs = instance->config->frame_config.buffered_fbs,
-                    .fb_in_buffer_before_get = instance->config->frame_config.fb_in_buffer_before_get,
-                    .frame_max_len = instance->config->frame_config.frame_max_len,
+                    .buffered_fbs = primary_push_frame_config.buffered_fbs,
+                    .frame_max_len = primary_push_frame_config.frame_max_len,
+                    .fb_in_buffer_before_get = 0,
+                    .fps = primary_push_frame_config.fps,
                 };
 
                 ret = espfsp_message_buffer_init(&instance->receiver_buffer, &new_config);

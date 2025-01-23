@@ -16,8 +16,11 @@
 #include "data_proto/espfsp_data_send_proto.h"
 #include "data_proto/espfsp_data_proto.h"
 
-// Assume that TICK is 1ms
-#define SEND_TASK_DELAY (5 / portTICK_PERIOD_MS)
+// Assume that TICK is 1ms. Some delay should be used. Data tasks are most important in this
+// protocol, but still data handling cannot block other task, like communication handling.
+// Delay for send is greater, as whole frame is sent in one step.
+// Delay for receive is smaller, as one message (part of frame) is received in one step.
+#define SEND_TASK_DELAY (0 / portTICK_PERIOD_MS)
 #define RECV_TASK_DELAY (0 / portTICK_PERIOD_MS)
 
 #define QUEUE_MAX_SIZE 3
@@ -51,7 +54,7 @@ static esp_err_t update_frame_config(espfsp_data_proto_t *data_proto, espfsp_fra
         return ESP_FAIL;
     }
 
-    data_proto->frame_interval_us = (uint64_t) (1000 / frame_config->fps) << 10;
+    data_proto->frame_interval_us = (uint64_t) ((1000 / frame_config->fps) << 10);
 
     ESP_LOGI(TAG, "FPS updated to: %d", frame_config->fps);
     ESP_LOGI(TAG, "Interval set to: %lld", data_proto->frame_interval_us);

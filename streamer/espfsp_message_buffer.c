@@ -11,6 +11,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
+#include "esp_timer.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -164,6 +165,10 @@ esp_err_t espfsp_message_buffer_init(espfsp_receiver_buffer_t *receiver_buffer, 
         return ESP_FAIL;
     }
 
+    receiver_buffer->buffer_locked = true;
+    receiver_buffer->last_fb_get_us = 0;
+    receiver_buffer->fb_get_interval_us = (uint64_t) ((1000 / config->fps) << 10);
+
     return ESP_OK;
 }
 
@@ -201,18 +206,54 @@ esp_err_t espfsp_message_buffer_clear(espfsp_receiver_buffer_t *receiver_buffer)
     return ESP_OK;
 }
 
-espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer, uint32_t timeout_ms)
+static bool is_buffer_locked(espfsp_receiver_buffer_t *receiver_buffer, uint32_t *timeout_ms)
 {
-    UBaseType_t items_in_queue = uxQueueMessagesWaiting(receiver_buffer->frameQueue);
+    UBaseType_t frames_in_queue = uxQueueMessagesWaiting(receiver_buffer->frameQueue);
 
-    while (items_in_queue < receiver_buffer->config->fb_in_buffer_before_get && timeout_ms > 0)
+    if (receiver_buffer->buffer_locked)
     {
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-        timeout_ms -= 10;
-        items_in_queue = uxQueueMessagesWaiting(receiver_buffer->frameQueue);
+        while (frames_in_queue < receiver_buffer->config->fb_in_buffer_before_get && *timeout_ms > 0)
+        {
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+            *timeout_ms -= *timeout_ms > 10 ? 10 : *timeout_ms;
+            frames_in_queue = uxQueueMessagesWaiting(receiver_buffer->frameQueue);
+        }
+
+        if (frames_in_queue >= receiver_buffer->config->fb_in_buffer_before_get)
+        {
+            receiver_buffer->buffer_locked = false;
+        }
+    }
+    else if (frames_in_queue == 0 && receiver_buffer->config->fb_in_buffer_before_get != 0)
+    {
+        receiver_buffer->buffer_locked = true;
     }
 
-    if (items_in_queue < receiver_buffer->config->fb_in_buffer_before_get)
+    return receiver_buffer->buffer_locked;
+}
+
+static bool is_buffer_interval_met(espfsp_receiver_buffer_t *receiver_buffer, uint32_t *timeout_ms)
+{
+    uint64_t current_time = esp_timer_get_time();
+
+    while((current_time - receiver_buffer->last_fb_get_us) < receiver_buffer->fb_get_interval_us && *timeout_ms > 0)
+    {
+        vTaskDelay(5 / portTICK_PERIOD_MS);
+        *timeout_ms -= *timeout_ms > 5 ? 5 : *timeout_ms;
+        current_time = esp_timer_get_time();
+    }
+
+    return (current_time - receiver_buffer->last_fb_get_us) >= receiver_buffer->fb_get_interval_us;
+}
+
+espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buffer, uint32_t timeout_ms)
+{
+    if (is_buffer_locked(receiver_buffer, &timeout_ms))
+    {
+        return NULL;
+    }
+
+    if (!is_buffer_interval_met(receiver_buffer, &timeout_ms))
     {
         return NULL;
     }
@@ -222,6 +263,8 @@ espfsp_fb_t *espfsp_message_buffer_get_fb(espfsp_receiver_buffer_t *receiver_buf
     {
         return NULL;
     }
+
+    receiver_buffer->last_fb_get_us = esp_timer_get_time();
 
     receiver_buffer->s_fb->len = receiver_buffer->s_ass->len;
     receiver_buffer->s_fb->width = receiver_buffer->s_ass->width;

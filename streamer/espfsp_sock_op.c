@@ -144,7 +144,7 @@ esp_err_t espfsp_send_whole_fb_within(int sock, espfsp_fb_t *fb, uint64_t time_u
         }
 
         acc_time_to_wait_us += time_to_wait_us_per_msg;
-        if (portTICK_PERIOD_US < acc_time_to_wait_us)
+        if (portTICK_PERIOD_US <= acc_time_to_wait_us)
         {
             TickType_t ticks_to_delay = acc_time_to_wait_us / portTICK_PERIOD_US;
             acc_time_to_wait_us = acc_time_to_wait_us % portTICK_PERIOD_US;

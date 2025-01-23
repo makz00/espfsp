@@ -166,6 +166,7 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
         .buffered_fbs = config->frame_config.buffered_fbs,
         .frame_max_len = config->frame_config.frame_max_len,
         .fb_in_buffer_before_get = config->frame_config.fb_in_buffer_before_get,
+        .fps = config->frame_config.fps,
     };
 
     err = espfsp_message_buffer_init(&instance->receiver_buffer, &receiver_buffer_config);
@@ -376,7 +377,8 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
     // Reconfigure receiver buffer if parameters changed
     if (instance->config->frame_config.buffered_fbs != instance->receiver_buffer.config->buffered_fbs ||
         instance->config->frame_config.fb_in_buffer_before_get != instance->receiver_buffer.config->fb_in_buffer_before_get ||
-        instance->config->frame_config.frame_max_len != instance->receiver_buffer.config->frame_max_len)
+        instance->config->frame_config.frame_max_len != instance->receiver_buffer.config->frame_max_len ||
+        instance->config->frame_config.fps != instance->receiver_buffer.config->fps)
     {
         ret = espfsp_message_buffer_deinit(&instance->receiver_buffer);
         if (ret == ESP_OK)
@@ -385,6 +387,7 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
                 .buffered_fbs = instance->config->frame_config.buffered_fbs,
                 .fb_in_buffer_before_get = instance->config->frame_config.fb_in_buffer_before_get,
                 .frame_max_len = instance->config->frame_config.frame_max_len,
+                .fps = instance->config->frame_config.fps,
             };
 
             ret = espfsp_message_buffer_init(&instance->receiver_buffer, &new_config);
