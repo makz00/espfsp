@@ -16,7 +16,7 @@
 #include "data_proto/espfsp_data_signal.h"
 #include "data_proto/espfsp_data_recv_proto.h"
 
-// static const char *TAG = "ESPFSP_DATA_RECIVE_PROTOCOL";
+static const char *TAG = "ESPFSP_DATA_RECIVE_PROTOCOL";
 
 static struct timeval recv_timeout = {
     .tv_sec = 0,
@@ -41,6 +41,12 @@ static esp_err_t recv_msg(espfsp_data_proto_t *data_proto, int sock)
         //     ((espfsp_message_t *)rx_buffer)->msg_total,
         //     ((espfsp_message_t *)rx_buffer)->timestamp.tv_sec,
         //     ((espfsp_message_t *)rx_buffer)->timestamp.tv_usec);
+
+        if (((espfsp_message_t *) rx_buffer)->len > data_proto->frame_config.frame_max_len)
+        {
+            ESP_LOGE(TAG, "Frame to receive size is greater than allocated buffer");
+            return ret;
+        }
 
         espfsp_message_buffer_process_message((espfsp_message_t *)rx_buffer, data_proto->config->recv_buffer);
         data_proto->last_traffic = esp_timer_get_time();

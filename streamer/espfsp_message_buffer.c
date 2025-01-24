@@ -285,6 +285,12 @@ esp_err_t espfsp_message_buffer_return_fb(espfsp_receiver_buffer_t *receiver_buf
 
 void espfsp_message_buffer_process_message(const espfsp_message_t *message, espfsp_receiver_buffer_t *receiver_buffer)
 {
+    if (message->len > receiver_buffer->config->frame_max_len)
+    {
+        ESP_LOGE(TAG, "Received message size is graeter than allocated buffer");
+        return;
+    }
+
     espfsp_message_assembly_t * ass = get_assembly_with_timestamp(&message->timestamp, receiver_buffer);
     if (ass == NULL)
     {

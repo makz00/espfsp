@@ -45,10 +45,17 @@ esp_err_t espfsp_data_proto_handle_send(espfsp_data_proto_t *data_proto, int soc
     // - FB can be taken from camera directly OR
     // - FB can be taken from Receiver Buffer (waits for frames from internet)
     // depending on configuration.
-    // In order to not block, it shall return after some small time in order to not trigger WD.
+    // In order to not block, it shall return after some short time in order to not trigger WD.
     // It is best not to block at all in this callback.
     ret = data_proto->config->send_frame_callback(
         &data_proto->send_fb, data_proto->config->send_frame_ctx, &frame_state);
+
+    if (data_proto->send_fb.len > data_proto->frame_config.frame_max_len)
+    {
+        ESP_LOGE(TAG, "Frame to send size is greater than allocated buffer");
+        return ret;
+    }
+
     if (ret == ESP_OK &&
         frame_state == ESPFSP_DATA_PROTO_FRAME_OBTAINED &&
         data_proto->config->mode == ESPFSP_DATA_PROTO_MODE_NAT)
