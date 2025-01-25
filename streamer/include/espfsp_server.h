@@ -27,6 +27,7 @@ typedef struct
     espfsp_transport_t client_play_data_transport;
 
     espfsp_frame_config_t frame_config;
+    espfsp_cam_config_t cam_config;
 } espfsp_server_config_t;
 
 espfsp_server_handler_t espfsp_server_init(const espfsp_server_config_t *config);

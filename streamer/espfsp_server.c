@@ -252,9 +252,10 @@ static espfsp_server_instance_t *create_new_server(const espfsp_server_config_t 
         .session_id_gen = generate_session_id,
     };
 
-    // Later Frame Config should be same default for all parts of ESPFSP - server, clients
-    // Configuration possible only in runtime
+    // Later Frame Config and Camera Concif should be same default for all parts of ESPFSP -
+    // server, clients. Configuration should be possible only in runtime.
     memcpy(&session_manager_config.default_frame_config, &config->frame_config, sizeof(espfsp_frame_config_t));
+    memcpy(&session_manager_config.default_cam_config, &config->cam_config, sizeof(espfsp_cam_config_t));
 
     err = espfsp_session_manager_init(&instance->session_manager, &session_manager_config);
     if (err != ESP_OK)

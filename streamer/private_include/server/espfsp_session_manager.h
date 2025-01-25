@@ -41,6 +41,7 @@ typedef struct
     char name[ESPFSP_SERVER_SESSION_NAME_MAX_LEN];
     bool stream_started;
     espfsp_frame_config_t frame_config;
+    espfsp_cam_config_t cam_config;
 } espfsp_server_session_manager_data_t;
 
 typedef uint32_t (*__espfsp_session_manager_session_id_generator)(espfsp_session_manager_session_type_t type);
@@ -56,6 +57,7 @@ typedef struct
     int client_play_comm_protos_count;
     __espfsp_session_manager_session_id_generator session_id_gen;
     espfsp_frame_config_t default_frame_config;
+    espfsp_cam_config_t default_cam_config;
 } espfsp_server_session_manager_config_t;
 
 typedef struct
@@ -118,6 +120,14 @@ esp_err_t espfsp_session_manager_set_frame_config(
     espfsp_session_manager_t *session_manager,
     espfsp_comm_proto_t *comm_proto,
     espfsp_frame_config_t *frame_config);
+esp_err_t espfsp_session_manager_get_cam_config(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_cam_config_t *cam_config);
+esp_err_t espfsp_session_manager_set_cam_config(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_cam_config_t *cam_config);
 
 // General management of Session Manager
 esp_err_t espfsp_session_manager_get_primary_session(

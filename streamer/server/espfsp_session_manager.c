@@ -103,7 +103,7 @@ esp_err_t espfsp_session_manager_deinit(espfsp_session_manager_t *session_manage
     return ESP_OK;
 }
 
-static espfsp_server_session_manager_data_t * find_and_take_unactive_session_data(
+static espfsp_server_session_manager_data_t * find_unactive_session_data(
     espfsp_server_session_manager_data_t *data_set, int data_count)
 {
     for (int i = 0; i < data_count; i++)
@@ -112,7 +112,6 @@ static espfsp_server_session_manager_data_t * find_and_take_unactive_session_dat
 
         if (!data->active)
         {
-            data->active = true;
             return data;
         }
     }
@@ -243,9 +242,10 @@ esp_err_t espfsp_session_manager_get_comm_proto(
     ret = get_data_set_info(session_manager, type, &data_set, &data_count);
     if (ret == ESP_OK)
     {
-        espfsp_server_session_manager_data_t *data = find_and_take_unactive_session_data(data_set, data_count);
+        espfsp_server_session_manager_data_t *data = find_unactive_session_data(data_set, data_count);
         if (data != NULL)
         {
+            data->active = true;
             data->session_id = UNACTIVE_SESSION_ID;
             *comm_proto = data->comm_proto;
         }
@@ -262,6 +262,7 @@ esp_err_t espfsp_session_manager_return_comm_proto(
     if (data != NULL)
     {
         data->active = false;
+        data->session_id = UNACTIVE_SESSION_ID;
     }
     else
     {
@@ -281,11 +282,18 @@ esp_err_t espfsp_session_manager_activate_session(
     {
         data->session_id = session_manager->config->session_id_gen(data->type);
         data->stream_started = false;
-        snprintf(data->name, sizeof(data->name), "CLIENT_NAME-%ld", data->session_id);
+        if (snprintf(data->name, sizeof(data->name), "CLIENT_NAME-%ld", data->session_id) > sizeof(data->name))
+        {
+            ESP_LOGE(TAG, "Name too long");
+        }
         memcpy(
             &data->frame_config,
             &session_manager->config->default_frame_config,
             sizeof(espfsp_frame_config_t));
+        memcpy(
+            &data->cam_config,
+            &session_manager->config->default_cam_config,
+            sizeof(espfsp_cam_config_t));
     }
     else
     {
@@ -346,10 +354,9 @@ esp_err_t espfsp_session_manager_get_session_name(
 {
     esp_err_t ret = ESP_OK;
     espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
-    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
+    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID && strlen(data->name) < 30)
     {
-        // *session_name = data->name;
-        memcpy(session_name, data->name, ESPFSP_SERVER_SESSION_NAME_MAX_LEN);
+        memcpy(session_name, data->name, strlen(data->name));
     }
     else
     {
@@ -455,6 +462,46 @@ esp_err_t espfsp_session_manager_set_frame_config(
     {
         ret = ESP_FAIL;
         ESP_LOGE(TAG, "Set frame config failed");
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_session_manager_get_cam_config(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_cam_config_t *cam_config)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
+    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
+    {
+        memcpy(cam_config, &data->cam_config, sizeof(espfsp_cam_config_t));
+    }
+    else
+    {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Get cam config failed");
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_session_manager_set_cam_config(
+    espfsp_session_manager_t *session_manager,
+    espfsp_comm_proto_t *comm_proto,
+    espfsp_cam_config_t *cam_config)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_server_session_manager_data_t *data = find_session_data_by_comm_proto(session_manager, comm_proto);
+    if (data != NULL && data->session_id != UNACTIVE_SESSION_ID)
+    {
+        memcpy(&data->cam_config, cam_config, sizeof(espfsp_cam_config_t));
+    }
+    else
+    {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Set cam config failed");
     }
 
     return ret;

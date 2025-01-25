@@ -53,3 +53,6 @@ esp_err_t espfsp_params_map_frame_param_get_id(espfsp_params_map_frame_param_t p
 
 esp_err_t espfsp_params_map_set_frame_config(espfsp_frame_config_t *frame_config, uint16_t param_id, uint32_t value);
 esp_err_t espfsp_params_map_set_cam_config(espfsp_cam_config_t *cam_config, uint16_t param_id, uint32_t value);
+
+esp_err_t espfsp_params_map_get_frame_config_param_val(espfsp_frame_config_t *frame_config, uint16_t param_id, uint32_t *value);
+esp_err_t espfsp_params_map_get_cam_config_param_val(espfsp_cam_config_t *cam_config, uint16_t param_id, uint32_t *value);

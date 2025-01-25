@@ -178,6 +178,10 @@ esp_err_t espfsp_server_req_start_stream_handler(espfsp_comm_proto_t *comm_proto
 
         if (ret == ESP_OK)
         {
+            ret = espfsp_data_proto_set_frame_params(&instance->client_push_data_proto, &primary_push_frame_config);
+        }
+        if (ret == ESP_OK)
+        {
             ret = espfsp_data_proto_set_frame_params(&instance->client_play_data_proto, &primary_push_frame_config);
         }
         if (ret == ESP_OK)
@@ -212,7 +216,7 @@ esp_err_t espfsp_server_req_stop_stream_handler(espfsp_comm_proto_t *comm_proto,
     bool push_stream_started = false;
     bool play_stream_started = false;
 
-    esp_err_t ret = espfsp_session_manager_take(session_manager);
+    ret = espfsp_session_manager_take(session_manager);
     if (ret == ESP_OK)
     {
         ret = espfsp_session_manager_get_session_id(session_manager, comm_proto, &play_session_id);
@@ -296,6 +300,7 @@ esp_err_t espfsp_server_req_cam_set_params_handler(espfsp_comm_proto_t *comm_pro
     espfsp_comm_proto_t *primary_push_comm_proto = NULL;
     uint32_t primary_push_session_id = -123;
     uint32_t play_session_id = -123;
+    espfsp_cam_config_t primary_push_cam_config;
 
     ret = espfsp_session_manager_take(session_manager);
     if (ret == ESP_OK)
@@ -328,6 +333,21 @@ esp_err_t espfsp_server_req_cam_set_params_handler(espfsp_comm_proto_t *comm_pro
             ESP_LOGE(TAG, "Session ID not found");
             ret = ESP_FAIL;
         }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_session_manager_get_cam_config(
+                session_manager, primary_push_comm_proto, &primary_push_cam_config);
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_params_map_set_cam_config(
+                &primary_push_cam_config, received_msg->param_id, received_msg->value);
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_session_manager_set_cam_config(
+                session_manager, primary_push_comm_proto, &primary_push_cam_config);
+        }
 
         espfsp_session_manager_release(session_manager);
     }
@@ -338,6 +358,62 @@ esp_err_t espfsp_server_req_cam_set_params_handler(espfsp_comm_proto_t *comm_pro
         send_msg.value = received_msg->value;
 
         ret = espfsp_comm_proto_cam_set_params(primary_push_comm_proto, &send_msg);
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_server_req_cam_get_params_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_comm_req_cam_get_params_message_t *received_msg = (espfsp_comm_req_cam_get_params_message_t *) msg_content;
+    espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
+    espfsp_session_manager_t *session_manager = &instance->session_manager;
+
+    espfsp_comm_resp_cam_params_resp_message_t send_msg;
+    espfsp_comm_proto_t *primary_push_comm_proto = NULL;
+    uint32_t play_session_id = -123;
+    espfsp_cam_config_t primary_push_cam_config;
+
+    ret = espfsp_session_manager_take(session_manager);
+    if (ret == ESP_OK)
+    {
+        ret = espfsp_session_manager_get_session_id(session_manager, comm_proto, &play_session_id);
+        if (ret == ESP_OK && play_session_id != received_msg->session_id)
+        {
+            ESP_LOGE(TAG, "Session ID does not match");
+            espfsp_session_manager_release(session_manager);
+            return ESP_OK;
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_session_manager_get_primary_session(
+                session_manager, ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH, &primary_push_comm_proto);
+        }
+        if (ret == ESP_OK && primary_push_comm_proto == NULL)
+        {
+            ESP_LOGI(TAG, "No push primary session");
+            espfsp_session_manager_release(session_manager);
+            return ESP_OK;
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_session_manager_get_cam_config(
+                session_manager, primary_push_comm_proto, &primary_push_cam_config);
+        }
+
+        espfsp_session_manager_release(session_manager);
+    }
+    if (ret == ESP_OK)
+    {
+        ret = espfsp_params_map_get_cam_config_param_val(
+            &primary_push_cam_config, received_msg->param_id, &send_msg.value);
+    }
+    if (ret == ESP_OK)
+    {
+        send_msg.session_id = play_session_id;
+        send_msg.param_id = received_msg->param_id;
+        ret = espfsp_comm_proto_cam_params(comm_proto, &send_msg);
     }
 
     return ret;
@@ -394,7 +470,8 @@ esp_err_t espfsp_server_req_frame_set_params_handler(espfsp_comm_proto_t *comm_p
         }
         if (ret == ESP_OK)
         {
-            ret = espfsp_params_map_set_frame_config(&primary_push_frame_config, received_msg->param_id, received_msg->value);
+            ret = espfsp_params_map_set_frame_config(
+                &primary_push_frame_config, received_msg->param_id, received_msg->value);
         }
         if (ret == ESP_OK)
         {
@@ -415,6 +492,62 @@ esp_err_t espfsp_server_req_frame_set_params_handler(espfsp_comm_proto_t *comm_p
     if (ret == ESP_OK)
     {
         ret = espfsp_data_proto_set_frame_params(&instance->client_play_data_proto, &primary_push_frame_config);
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_server_req_frame_get_params_handler(espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_comm_req_frame_get_params_message_t *received_msg = (espfsp_comm_req_frame_get_params_message_t *) msg_content;
+    espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
+    espfsp_session_manager_t *session_manager = &instance->session_manager;
+
+    espfsp_comm_resp_frame_params_resp_message_t send_msg;
+    espfsp_comm_proto_t *primary_push_comm_proto = NULL;
+    uint32_t play_session_id = -123;
+    espfsp_frame_config_t primary_push_frame_config;
+
+    ret = espfsp_session_manager_take(session_manager);
+    if (ret == ESP_OK)
+    {
+        ret = espfsp_session_manager_get_session_id(session_manager, comm_proto, &play_session_id);
+        if (ret == ESP_OK && play_session_id != received_msg->session_id)
+        {
+            ESP_LOGE(TAG, "Session ID does not match");
+            espfsp_session_manager_release(session_manager);
+            return ESP_OK;
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_session_manager_get_primary_session(
+                session_manager, ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH, &primary_push_comm_proto);
+        }
+        if (ret == ESP_OK && primary_push_comm_proto == NULL)
+        {
+            ESP_LOGI(TAG, "No push primary session");
+            espfsp_session_manager_release(session_manager);
+            return ESP_OK;
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_session_manager_get_frame_config(
+                session_manager, primary_push_comm_proto, &primary_push_frame_config);
+        }
+
+        espfsp_session_manager_release(session_manager);
+    }
+    if (ret == ESP_OK)
+    {
+        ret = espfsp_params_map_get_frame_config_param_val(
+            &primary_push_frame_config, received_msg->param_id, &send_msg.value);
+    }
+    if (ret == ESP_OK)
+    {
+        send_msg.session_id = play_session_id;
+        send_msg.param_id = received_msg->param_id;
+        ret = espfsp_comm_proto_frame_params(comm_proto, &send_msg);
     }
 
     return ret;
