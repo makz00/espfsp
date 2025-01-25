@@ -119,14 +119,13 @@ static esp_err_t start_client_push_data_task(espfsp_server_instance_t * instance
     data->data_proto = &instance->client_push_data_proto;
     data->server_port = instance->config->client_push_local.data_port;
 
-    xStatus = xTaskCreatePinnedToCore(
+    xStatus = xTaskCreate(
         espfsp_server_data_task,
         "espfsp_server_client_push_data_task",
         instance->config->client_push_data_task_info.stack_size,
         (void *) data,
         instance->config->client_push_data_task_info.task_prio,
-        &instance->data_recv_task_handle,
-        1);
+        &instance->data_recv_task_handle);
 
     if (xStatus != pdPASS)
     {

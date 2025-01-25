@@ -77,14 +77,13 @@ static esp_err_t start_data_task(espfsp_client_push_instance_t * instance)
     data->remote_port = instance->config->remote.data_port;
     data->remote_addr.addr = instance->config->remote_addr.addr;
 
-    xStatus = xTaskCreatePinnedToCore(
+    xStatus = xTaskCreate(
         espfsp_client_data_task,
         "espfsp_client_push_data_task",
         instance->config->data_task_info.stack_size,
         (void *) data,
         instance->config->data_task_info.task_prio,
-        &instance->data_task_handle,
-        1);
+        &instance->data_task_handle);
 
     if (xStatus != pdPASS)
     {
