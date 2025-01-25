@@ -65,6 +65,8 @@ void espfsp_client_session_and_control_task(void *pvParameters)
             ESP_LOGE(TAG, "Remove TCP client failed");
             break;
         }
+
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
 
     free(data);
