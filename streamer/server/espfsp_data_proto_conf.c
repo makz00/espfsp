@@ -25,7 +25,7 @@ static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_f
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
     espfsp_fb_t *recv_buf_fb = NULL;
 
-    recv_buf_fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer, 200);
+    recv_buf_fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer, 0);
     if (recv_buf_fb == NULL)
     {
         *state = ESPFSP_DATA_PROTO_FRAME_NOT_OBTAINED;
