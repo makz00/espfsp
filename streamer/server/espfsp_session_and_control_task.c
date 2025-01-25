@@ -61,7 +61,7 @@ static void handle_new_connection_task(void *pvParameters)
         }
     }
 
-    ESP_LOGE(TAG, "Shut down socket and restart...");
+    ESP_LOGI(TAG, "Shut down socket and restart...");
 
     esp_err_t ret = espfsp_remove_host(sock);
     if (ret != ESP_OK)
