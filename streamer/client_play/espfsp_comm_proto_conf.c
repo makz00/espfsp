@@ -31,6 +31,8 @@ esp_err_t espfsp_client_play_comm_protos_init(espfsp_client_play_instance_t *ins
     config.req_callbacks[ESPFSP_COMM_REQ_STOP_STREAM] = espfsp_client_play_req_stop_stream_handler;
     config.resp_callbacks[ESPFSP_COMM_RESP_SESSION_ACK] = espfsp_client_play_resp_session_ack_handler;
     config.resp_callbacks[ESPFSP_COMM_RESP_SOURCES_RESP] = espfsp_client_play_resp_sources_handler;
+    config.resp_callbacks[ESPFSP_COMM_RESP_FRAME_PARAMS_RESP] = espfsp_client_play_resp_frame_config_handler;
+    config.resp_callbacks[ESPFSP_COMM_RESP_CAM_PARAMS_RESP] = espfsp_client_play_resp_cam_config_handler;
     config.repetive_callback = NULL;
     config.repetive_callback_freq_us = 100000000;
     config.conn_closed_callback = espfsp_client_play_connection_stop;

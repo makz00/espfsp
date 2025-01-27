@@ -108,9 +108,8 @@ esp_err_t espfsp_client_play_resp_sources_handler(
     espfsp_comm_resp_sources_resp_message_t *msg = (espfsp_comm_resp_sources_resp_message_t *) msg_content;
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) ctx;
 
-    uint32_t consumer_id;
-    espfsp_sources_producer_val_t producer_val;
-    bool handle_resp = false;
+    espfsp_get_sources_data_t sources_data;
+    bool should_handle_response = false;
 
     if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
     {
@@ -119,39 +118,132 @@ esp_err_t espfsp_client_play_resp_sources_handler(
     }
     if (instance->session_data.active && instance->session_data.session_id == msg->session_id)
     {
-        handle_resp = true;
+        should_handle_response = true;
     }
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");
         return ESP_FAIL;
     }
-    if (handle_resp)
-    {
-        if (xQueueReceive(instance->get_req_sources_synch_data.consumerIdQueue, &consumer_id, 0) != pdTRUE)
-        {
-            ESP_LOGE(TAG, "No consumer id passed");
-            ret = ESP_FAIL;
-        }
-        if (ret == ESP_OK)
-        {
-            producer_val.consumer_id = consumer_id;
-            producer_val.sources_names_len = msg->num_sources;
-            memcpy(producer_val.sources_names_buf, msg->source_names, sizeof(producer_val.sources_names_buf));
 
-            if (xQueueSend(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0) != pdTRUE)
+    if (should_handle_response)
+    {
+        sources_data.sources_names_len = msg->num_sources;
+        memcpy(sources_data.sources_names_buf, msg->source_names, sizeof(sources_data.sources_names_buf));
+
+        if (xQueueSend(instance->get_sources_data_queue, &sources_data, 5) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot send produced value. First element from FIFO will be dropped");
+            espfsp_get_sources_data_t sources_data_to_drop;
+
+            if (xQueueReceive(instance->get_sources_data_queue, &sources_data_to_drop, 0) != pdTRUE)
             {
-                ESP_LOGE(TAG, "Cannot sent produced value. First element from FIFO will be dropped");
-                espfsp_sources_producer_val_t to_drop_producer_val;
-                if (xQueueReceive(instance->get_req_sources_synch_data.producerValQueue, &to_drop_producer_val, 0) != pdTRUE)
-                {
-                    ESP_LOGI(TAG, "Cannot drop first element from FIFO");
-                }
-                if (xQueueSend(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0) != pdTRUE)
-                {
-                    ESP_LOGE(TAG, "Cannot send produced value after drop");
-                    ret = ESP_FAIL;
-                }
+                ESP_LOGI(TAG, "Cannot drop first element from FIFO");
+            }
+            if (xQueueSend(instance->get_sources_data_queue, &sources_data, 5) != pdTRUE)
+            {
+                ESP_LOGE(TAG, "Cannot send produced value after drop");
+                ret = ESP_FAIL;
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_client_play_resp_frame_config_handler(
+    espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_comm_resp_frame_params_resp_message_t *msg = (espfsp_comm_resp_frame_params_resp_message_t *) msg_content;
+    espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) ctx;
+
+    espfsp_get_param_data_t param_data;
+    bool should_handle_response = false;
+
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return ESP_FAIL;
+    }
+    if (instance->session_data.active && instance->session_data.session_id == msg->session_id)
+    {
+        should_handle_response = true;
+    }
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
+    }
+
+    if (should_handle_response)
+    {
+        param_data.param_id = msg->param_id;
+        param_data.param_value = msg->value;
+
+        if (xQueueSend(instance->get_frame_config_data_queue, &param_data, 5) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot send produced value. First element from FIFO will be dropped");
+            espfsp_get_param_data_t param_data_to_drop;
+
+            if (xQueueReceive(instance->get_frame_config_data_queue, &param_data_to_drop, 0) != pdTRUE)
+            {
+                ESP_LOGI(TAG, "Cannot drop first element from FIFO");
+            }
+            if (xQueueSend(instance->get_frame_config_data_queue, &param_data, 5) != pdTRUE)
+            {
+                ESP_LOGE(TAG, "Cannot send produced value after drop");
+                ret = ESP_FAIL;
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_client_play_resp_cam_config_handler(
+    espfsp_comm_proto_t *comm_proto, void *msg_content, void *ctx)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_comm_resp_cam_params_resp_message_t *msg = (espfsp_comm_resp_cam_params_resp_message_t *) msg_content;
+    espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) ctx;
+
+    espfsp_get_param_data_t param_data;
+    bool should_handle_response = false;
+
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return ESP_FAIL;
+    }
+    if (instance->session_data.active && instance->session_data.session_id == msg->session_id)
+    {
+        should_handle_response = true;
+    }
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
+    }
+
+    if (should_handle_response)
+    {
+        param_data.param_id = msg->param_id;
+        param_data.param_value = msg->value;
+
+        if (xQueueSend(instance->get_cam_config_data_queue, &param_data, 5) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot send produced value. First element from FIFO will be dropped");
+            espfsp_get_param_data_t param_data_to_drop;
+
+            if (xQueueReceive(instance->get_cam_config_data_queue, &param_data_to_drop, 0) != pdTRUE)
+            {
+                ESP_LOGI(TAG, "Cannot drop first element from FIFO");
+            }
+            if (xQueueSend(instance->get_cam_config_data_queue, &param_data, 5) != pdTRUE)
+            {
+                ESP_LOGE(TAG, "Cannot send produced value after drop");
+                ret = ESP_FAIL;
             }
         }
     }

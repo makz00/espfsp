@@ -43,9 +43,17 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler);
 
 esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler);
 
-esp_err_t espfsp_client_play_reconfigure_frame(espfsp_client_play_handler_t handler, espfsp_frame_config_t *frame_config);
+esp_err_t espfsp_client_play_reconfigure_frame(
+    espfsp_client_play_handler_t handler, espfsp_frame_config_t *frame_config);
 
-esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handler, espfsp_cam_config_t *cam_config);
+esp_err_t espfsp_client_play_get_frame(
+    espfsp_client_play_handler_t handler, espfsp_frame_config_t *frame_config, uint32_t timeout_ms);
+
+esp_err_t espfsp_client_play_reconfigure_cam(
+    espfsp_client_play_handler_t handler, espfsp_cam_config_t *cam_config);
+
+esp_err_t espfsp_client_play_get_cam(
+    espfsp_client_play_handler_t handler, espfsp_cam_config_t *cam_config, uint32_t timeout_ms);
 
 esp_err_t espfsp_client_play_get_sources_timeout(
     espfsp_client_play_handler_t handler,
@@ -53,4 +61,5 @@ esp_err_t espfsp_client_play_get_sources_timeout(
     int *sources_names_len,
     uint32_t timeout_ms);
 
-esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler, const char source_name[SOURCE_NAME_LEN_MAX]);
+esp_err_t espfsp_client_play_set_source(
+    espfsp_client_play_handler_t handler, const char source_name[SOURCE_NAME_LEN_MAX]);

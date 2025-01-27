@@ -24,17 +24,14 @@ typedef struct {
 } espfsp_client_play_session_data_t;
 
 typedef struct {
-    QueueHandle_t consumerIdQueue;
-    QueueHandle_t producerValQueue;
-} espfsp_get_req_synch_data_t;
-
-typedef uint32_t espfsp_sources_consumer_id_t;
+    char sources_names_buf[SOURCE_NAMES_MAX][SOURCE_NAME_LEN_MAX];
+    int sources_names_len;
+} espfsp_get_sources_data_t;
 
 typedef struct {
-    uint32_t consumer_id;
-    char sources_names_buf[3][30];
-    int sources_names_len;
-} espfsp_sources_producer_val_t;
+    uint16_t param_id;
+    uint32_t param_value;
+} espfsp_get_param_data_t;
 
 typedef struct
 {
@@ -48,7 +45,9 @@ typedef struct
     espfsp_comm_proto_t comm_proto;
     espfsp_data_proto_t data_proto;
 
-    espfsp_get_req_synch_data_t get_req_sources_synch_data;
+    QueueHandle_t get_sources_data_queue;
+    QueueHandle_t get_frame_config_data_queue;
+    QueueHandle_t get_cam_config_data_queue;
 
     espfsp_client_play_session_data_t session_data;
 } espfsp_client_play_instance_t;

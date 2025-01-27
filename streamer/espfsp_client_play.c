@@ -21,8 +21,6 @@
 #include "client_common/espfsp_session_and_control_task.h"
 #include "client_common/espfsp_data_task.h"
 
-#define SERVER_WAIT_TIMEOUT (5000 / portTICK_PERIOD_MS)
-
 static const char *TAG = "ESPFSP_CLIENT_PLAY";
 
 static espfsp_client_play_state_t *state_ = NULL;
@@ -147,17 +145,24 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
 
     esp_err_t err = ESP_OK;
 
-    instance->get_req_sources_synch_data.consumerIdQueue = xQueueCreate(3, sizeof(espfsp_sources_consumer_id_t));
-    if (instance->get_req_sources_synch_data.consumerIdQueue == NULL)
+    instance->get_sources_data_queue = xQueueCreate(1, sizeof(espfsp_get_sources_data_t));
+    if (instance->get_sources_data_queue == NULL)
     {
-        ESP_LOGE(TAG, "Cannot initialize queue for consumer id");
+        ESP_LOGE(TAG, "Cannot initialize queue for get sources request");
         return NULL;
     }
 
-    instance->get_req_sources_synch_data.producerValQueue = xQueueCreate(3, sizeof(espfsp_sources_producer_val_t));
-    if (instance->get_req_sources_synch_data.producerValQueue == NULL)
+    instance->get_frame_config_data_queue = xQueueCreate(frame_param_map_size, sizeof(espfsp_get_param_data_t));
+    if (instance->get_frame_config_data_queue == NULL)
     {
-        ESP_LOGE(TAG, "Cannot initialize queue for producer val");
+        ESP_LOGE(TAG, "Cannot initialize queue for get frame config");
+        return NULL;
+    }
+
+    instance->get_cam_config_data_queue = xQueueCreate(cam_param_map_size, sizeof(espfsp_get_param_data_t));
+    if (instance->get_cam_config_data_queue == NULL)
+    {
+        ESP_LOGE(TAG, "Cannot initialize queue for get camera config");
         return NULL;
     }
 
@@ -260,8 +265,9 @@ static esp_err_t remove_client_play(espfsp_client_play_instance_t *instance)
         return ret;
     }
 
-    vQueueDelete(instance->get_req_sources_synch_data.consumerIdQueue);
-    vQueueDelete(instance->get_req_sources_synch_data.producerValQueue);
+    vQueueDelete(instance->get_sources_data_queue);
+    vQueueDelete(instance->get_frame_config_data_queue);
+    vQueueDelete(instance->get_cam_config_data_queue);
     vSemaphoreDelete(instance->session_data.mutex);
 
     free(instance->config);
@@ -315,14 +321,7 @@ espfsp_fb_t *espfsp_client_play_get_fb(espfsp_client_play_handler_t handler, uin
 {
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
 
-    espfsp_fb_t *fb = NULL;
-    fb = espfsp_message_buffer_get_fb(&instance->receiver_buffer, timeout_ms);
-    if (fb == NULL)
-    {
-        // ESP_LOGI(TAG, "Frame buffer timeout");
-    }
-
-    return fb;
+    return espfsp_message_buffer_get_fb(&instance->receiver_buffer, timeout_ms);
 }
 
 esp_err_t espfsp_client_play_return_fb(espfsp_client_play_handler_t handler, espfsp_fb_t *fb)
@@ -373,7 +372,6 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
         return ESP_FAIL;
     }
 
-    // Reconfigure receiver buffer if parameters changed
     if (instance->config->frame_config.buffered_fbs != instance->receiver_buffer.config->buffered_fbs ||
         instance->config->frame_config.fb_in_buffer_before_get != instance->receiver_buffer.config->fb_in_buffer_before_get ||
         instance->config->frame_config.frame_max_len != instance->receiver_buffer.config->frame_max_len ||
@@ -448,7 +446,8 @@ esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler)
     return espfsp_comm_proto_stop_stream(&instance->comm_proto, &msg);
 }
 
-esp_err_t espfsp_client_play_reconfigure_frame(espfsp_client_play_handler_t handler, espfsp_frame_config_t *frame_config)
+esp_err_t espfsp_client_play_reconfigure_frame(
+    espfsp_client_play_handler_t handler, espfsp_frame_config_t *frame_config)
 {
     esp_err_t ret = ESP_OK;
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
@@ -501,7 +500,79 @@ esp_err_t espfsp_client_play_reconfigure_frame(espfsp_client_play_handler_t hand
     return ret;
 }
 
-esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handler, espfsp_cam_config_t *cam_config)
+esp_err_t espfsp_client_play_get_frame(
+    espfsp_client_play_handler_t handler, espfsp_frame_config_t *frame_config, uint32_t timeout_ms)
+{
+    esp_err_t ret = ESP_OK;
+    espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
+    espfsp_comm_req_frame_get_params_message_t msg;
+
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return ESP_FAIL;
+    }
+
+    if (!instance->session_data.active)
+    {
+        if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot give semaphore");
+            return ESP_FAIL;
+        }
+        ESP_LOGE(TAG, "Session state is not correct for this request");
+        return ESP_FAIL;
+    }
+
+    msg.session_id = instance->session_data.session_id;
+
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
+    }
+
+    for (int i = 0; i < frame_param_map_size; i++)
+    {
+        msg.param_id = frame_param_map[i].param;
+
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_comm_proto_frame_get_params(&instance->comm_proto, &msg);
+        }
+    }
+
+    int params_to_receive = frame_param_map_size;
+    espfsp_get_param_data_t param_data;
+
+    if (ret == ESP_OK)
+    {
+        while (timeout_ms > 0 && params_to_receive > 0)
+        {
+            if (xQueueReceive(instance->get_frame_config_data_queue, &param_data, 0) == pdTRUE)
+            {
+                espfsp_params_map_set_frame_config(frame_config, param_data.param_id, param_data.param_value);
+                params_to_receive--;
+            }
+            else
+            {
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+                timeout_ms -= 10;
+            }
+        }
+    }
+
+    if (params_to_receive > 0)
+    {
+        ESP_LOGE(TAG, "Cannot receive all frame params. Try increase timeout");
+        ret = ESP_FAIL;
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_client_play_reconfigure_cam(
+    espfsp_client_play_handler_t handler, espfsp_cam_config_t *cam_config)
 {
     esp_err_t ret = ESP_OK;
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
@@ -549,16 +620,12 @@ esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handle
     return ret;
 }
 
-esp_err_t espfsp_client_play_get_sources_timeout(
-    espfsp_client_play_handler_t handler,
-    char sources_names_buf[SOURCE_NAMES_MAX][SOURCE_NAME_LEN_MAX],
-    int *sources_names_len,
-    uint32_t timeout_ms)
+esp_err_t espfsp_client_play_get_cam(
+    espfsp_client_play_handler_t handler, espfsp_cam_config_t *cam_config, uint32_t timeout_ms)
 {
-    static uint32_t next_consumer_id = 1001;
-
+    esp_err_t ret = ESP_OK;
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
-    espfsp_comm_req_source_get_message_t msg;
+    espfsp_comm_req_cam_get_params_message_t msg;
 
     if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
     {
@@ -578,82 +645,126 @@ esp_err_t espfsp_client_play_get_sources_timeout(
     }
 
     msg.session_id = instance->session_data.session_id;
+
     if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
     {
         ESP_LOGE(TAG, "Cannot give semaphore");
         return ESP_FAIL;
     }
 
-    uint32_t this_consumer_id = next_consumer_id++;
-
-    if (xQueueSend(instance->get_req_sources_synch_data.consumerIdQueue, &this_consumer_id, 0) != pdPASS)
+    for (int i = 0; i < cam_param_map_size; i++)
     {
-        ESP_LOGE(TAG, "Cannot send consumer ID to queue");
+        msg.param_id = cam_param_map[i].param;
+
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_comm_proto_cam_get_params(&instance->comm_proto, &msg);
+        }
+    }
+
+    int params_to_receive = cam_param_map_size;
+    espfsp_get_param_data_t param_data;
+
+    if (ret == ESP_OK)
+    {
+        while (timeout_ms > 0 && params_to_receive > 0)
+        {
+            if (xQueueReceive(instance->get_cam_config_data_queue, &param_data, 0) == pdTRUE)
+            {
+                espfsp_params_map_set_cam_config(cam_config, param_data.param_id, param_data.param_value);
+                params_to_receive--;
+            }
+            else
+            {
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+                timeout_ms -= 10;
+            }
+        }
+    }
+
+    if (params_to_receive > 0)
+    {
+        ESP_LOGE(TAG, "Cannot receive all camera params. Try increase timeout");
+        ret = ESP_FAIL;
+    }
+
+    return ret;
+}
+
+esp_err_t espfsp_client_play_get_sources_timeout(
+    espfsp_client_play_handler_t handler,
+    char sources_names_buf[SOURCE_NAMES_MAX][SOURCE_NAME_LEN_MAX],
+    int *sources_names_len,
+    uint32_t timeout_ms)
+{
+    espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
+    espfsp_comm_req_source_get_message_t msg;
+    espfsp_get_sources_data_t sources_data;
+
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return ESP_FAIL;
+    }
+
+    if (!instance->session_data.active)
+    {
+        if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot give semaphore");
+            return ESP_FAIL;
+        }
+        ESP_LOGE(TAG, "Session state is not correct for this request");
+        return ESP_FAIL;
+    }
+
+    msg.session_id = instance->session_data.session_id;
+
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
         return ESP_FAIL;
     }
 
     esp_err_t ret = espfsp_comm_proto_source_get(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
+    if (ret == ESP_OK)
     {
-        return ret;
-    }
-
-    espfsp_sources_producer_val_t producer_val;
-    bool value_produced = false;
-    BaseType_t xStatus;
-
-    while (timeout_ms > 0)
-    {
-        const int partial_timeout_ms = 20;
-
-        BaseType_t xStatus = xQueuePeek(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0);
-
-        if (xStatus == pdTRUE && producer_val.consumer_id == this_consumer_id)
+        while (timeout_ms > 0)
         {
-            value_produced = true;
-            break;
+            if (xQueuePeek(instance->get_sources_data_queue, &sources_data, 0) == pdTRUE)
+            {
+                break;
+            }
+            else
+            {
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+                timeout_ms -= 10;
+            }
         }
-        else
+
+        if (xQueueReceive(instance->get_sources_data_queue, &sources_data, 0) != pdTRUE)
         {
-            vTaskDelay(partial_timeout_ms / portTICK_PERIOD_MS);
-            timeout_ms -= partial_timeout_ms;
+            ESP_LOGE(TAG, "Cannot receive producent value from queue");
+            ret = ESP_FAIL;
         }
     }
-
-    if (!value_produced)
+    if (ret == ESP_OK)
     {
-        ESP_LOGE(TAG, "Response was not received");
-        return ESP_FAIL;
+        int sources_count_to_copy = *sources_names_len >= sources_data.sources_names_len ? sources_data.sources_names_len : *sources_names_len;
+
+        for (int i = 0; i < sources_count_to_copy; i++)
+        {
+            memcpy(sources_names_buf[i], sources_data.sources_names_buf[i], SOURCE_NAME_LEN_MAX);
+        }
+
+        *sources_names_len = sources_count_to_copy;
     }
 
-    xStatus = xQueueReceive(instance->get_req_sources_synch_data.producerValQueue, &producer_val, 0);
-    if (xStatus != pdTRUE)
-    {
-        ESP_LOGE(TAG, "Cannot receive producent value from queue");
-        return ESP_FAIL;
-    }
-
-    int src_to_copy = 0;
-
-    if (*sources_names_len >= producer_val.sources_names_len)
-    {
-        src_to_copy = producer_val.sources_names_len;
-    }
-    else
-    {
-        src_to_copy = *sources_names_len;
-    }
-
-    for (int i = 0; i < src_to_copy; i++)
-    {
-        memcpy(sources_names_buf[i], producer_val.sources_names_buf[i], SOURCE_NAME_LEN_MAX);
-    }
-    *sources_names_len = src_to_copy;
-
-    return ESP_OK;
+    return ret;
 }
 
-esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler, const char source_name[SOURCE_NAME_LEN_MAX])
+esp_err_t espfsp_client_play_set_source(
+    espfsp_client_play_handler_t handler, const char source_name[SOURCE_NAME_LEN_MAX])
 {
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
     espfsp_comm_req_source_set_message_t msg;
@@ -684,5 +795,6 @@ esp_err_t espfsp_client_play_set_source(espfsp_client_play_handler_t handler, co
     }
 
     memcpy(msg.source_name, source_name, sizeof(msg.source_name));
+
     return espfsp_comm_proto_source_set(&instance->comm_proto, &msg);
 }
