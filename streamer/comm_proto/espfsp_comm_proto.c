@@ -17,7 +17,7 @@
 #include "espfsp_sock_op.h"
 #include "comm_proto/espfsp_comm_proto.h"
 
-#define COMM_PROTO_DELAY (50 / portTICK_PERIOD_MS)
+#define COMM_PROTO_DELAY (20 / portTICK_PERIOD_MS)
 
 static const char *TAG = "ESPFSP_COMMUNICATION_PROTOCOL";
 

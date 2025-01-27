@@ -581,18 +581,12 @@ esp_err_t espfsp_server_req_source_set_handler(espfsp_comm_proto_t *comm_proto, 
             ret = espfsp_session_manager_get_primary_session(
                 session_manager, ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH, &primary_push_comm_proto);
         }
-        if (ret == ESP_OK && primary_push_comm_proto == NULL)
-        {
-            ESP_LOGI(TAG, "No push primary session");
-            espfsp_session_manager_release(session_manager);
-            return ESP_OK;
-        }
-        if (ret == ESP_OK)
+        if (ret == ESP_OK && primary_push_comm_proto != NULL)
         {
             ret = espfsp_session_manager_get_stream_state(
                 session_manager, primary_push_comm_proto, &push_stream_started);
         }
-        if (ret == ESP_OK)
+        if (ret == ESP_OK && primary_push_comm_proto != NULL)
         {
             ret = espfsp_session_manager_get_stream_state(
                 session_manager, comm_proto, &play_stream_started);
@@ -609,7 +603,7 @@ esp_err_t espfsp_server_req_source_set_handler(espfsp_comm_proto_t *comm_proto, 
                 ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PUSH,
                 received_msg->source_name,
                 &new_primary_push_comm_proto);
-            if (ret == ESP_OK && new_primary_push_comm_proto != NULL)
+            if (ret == ESP_OK && new_primary_push_comm_proto == NULL)
             {
                 ESP_LOGI(TAG, "Canont set new push");
                 espfsp_session_manager_release(session_manager);

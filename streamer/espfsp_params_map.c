@@ -45,7 +45,7 @@ esp_err_t espfsp_params_map_cam_param_get_param(uint16_t param_id, espfsp_params
 
     if (!found)
     {
-        ESP_LOGE(TAG, "Cannot map cam param id to param");
+        ESP_LOGE(TAG, "Cannot map cam param id to param. Received id: %d", param_id);
         ret = ESP_FAIL;
     }
 
@@ -68,7 +68,7 @@ esp_err_t espfsp_params_map_frame_param_get_param(uint16_t param_id, espfsp_para
 
     if (!found)
     {
-        ESP_LOGE(TAG, "Cannot map frame param id to param");
+        ESP_LOGE(TAG, "Cannot map frame param id to param. Received id: %d", param_id);
         ret = ESP_FAIL;
     }
 

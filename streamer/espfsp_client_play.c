@@ -396,13 +396,16 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
         }
     }
 
-    ret = espfsp_data_proto_start(&instance->data_proto);
-    if (ret != ESP_OK)
+    if (ret == ESP_OK)
     {
-        return ret;
+        ret = espfsp_data_proto_start(&instance->data_proto);
+    }
+    if (ret == ESP_OK)
+    {
+        ret = espfsp_comm_proto_start_stream(&instance->comm_proto, &msg);
     }
 
-    return espfsp_comm_proto_start_stream(&instance->comm_proto, &msg);
+    return ret;
 }
 
 esp_err_t espfsp_client_play_stop_stream(espfsp_client_play_handler_t handler)
@@ -480,7 +483,8 @@ esp_err_t espfsp_client_play_reconfigure_frame(
 
     for (int i = 0; i < frame_param_map_size; i++)
     {
-        uint16_t param_id = frame_param_map[i].param;
+        uint16_t param_id = frame_param_map[i].param_id;
+        msg.param_id = param_id;
 
         if (ret == ESP_OK)
         {
@@ -534,7 +538,7 @@ esp_err_t espfsp_client_play_get_frame(
 
     for (int i = 0; i < frame_param_map_size; i++)
     {
-        msg.param_id = frame_param_map[i].param;
+        msg.param_id = frame_param_map[i].param_id;
 
         if (ret == ESP_OK)
         {
@@ -605,7 +609,8 @@ esp_err_t espfsp_client_play_reconfigure_cam(
 
     for (int i = 0; i < cam_param_map_size; i++)
     {
-        uint16_t param_id = cam_param_map[i].param;
+        uint16_t param_id = cam_param_map[i].param_id;
+        msg.param_id = param_id;
 
         if (ret == ESP_OK)
         {
@@ -654,7 +659,7 @@ esp_err_t espfsp_client_play_get_cam(
 
     for (int i = 0; i < cam_param_map_size; i++)
     {
-        msg.param_id = cam_param_map[i].param;
+        msg.param_id = cam_param_map[i].param_id;
 
         if (ret == ESP_OK)
         {
