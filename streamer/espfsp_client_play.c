@@ -479,64 +479,23 @@ esp_err_t espfsp_client_play_reconfigure_frame(espfsp_client_play_handler_t hand
         return ESP_FAIL;
     }
 
-    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_FPS, &msg.param_id);
-    if (ret != ESP_OK)
+    for (int i = 0; i < frame_param_map_size; i++)
     {
-        return ret;
-    }
-    msg.value = (uint32_t) frame_config->fps;
+        uint16_t param_id = frame_param_map[i].param;
 
-    instance->config->frame_config.fps = frame_config->fps;
-
-    ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_FRAME_MAX_LEN, &msg.param_id);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-    msg.value = (uint32_t) frame_config->frame_max_len;
-
-    instance->config->frame_config.frame_max_len = frame_config->frame_max_len;
-
-    ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_params_map_get_frame_config_param_val(frame_config, param_id, &msg.value);
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
+        }
     }
 
-    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_BUFFERED_FBS, &msg.param_id);
-    if (ret != ESP_OK)
+    if (ret == ESP_OK)
     {
-        return ret;
-    }
-    msg.value = (uint32_t) frame_config->buffered_fbs;
-
-    instance->config->frame_config.buffered_fbs = frame_config->buffered_fbs;
-
-    ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    ret = espfsp_params_map_frame_param_get_id(ESPFSP_PARAM_MAP_FRAME_FB_IN_BUFFER_BEFORE_GET, &msg.param_id);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-    msg.value = (uint32_t) frame_config->fb_in_buffer_before_get;
-
-    instance->config->frame_config.fb_in_buffer_before_get = frame_config->fb_in_buffer_before_get;
-
-    ret = espfsp_comm_proto_frame_set_params(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
+        memcpy(&instance->config->frame_config, frame_config, sizeof(espfsp_frame_config_t));
     }
 
     return ret;
@@ -573,74 +532,18 @@ esp_err_t espfsp_client_play_reconfigure_cam(espfsp_client_play_handler_t handle
         return ESP_FAIL;
     }
 
-    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_FB_COUNT, &msg.param_id);
-    if (ret != ESP_OK)
+    for (int i = 0; i < cam_param_map_size; i++)
     {
-        return ret;
-    }
+        uint16_t param_id = cam_param_map[i].param;
 
-    msg.value = (uint32_t) cam_config->cam_fb_count;
-
-    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_GRAB_MODE, &msg.param_id);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    msg.value = (uint32_t) cam_config->cam_grab_mode;
-
-    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_JPEG_QUALITY, &msg.param_id);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-    msg.value = (uint32_t) cam_config->cam_jpeg_quality;
-
-
-    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_PIXEL_FORMAT, &msg.param_id);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-    msg.value = (uint32_t) cam_config->cam_pixel_format;
-
-
-    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-
-    ret = espfsp_params_map_cam_param_get_id(ESPFSP_PARAM_MAP_CAM_FRAME_SIZE, &msg.param_id);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-    msg.value = (uint32_t) cam_config->cam_frame_size;
-
-
-    ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
-    if (ret != ESP_OK)
-    {
-        return ret;
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_params_map_get_cam_config_param_val(cam_config, param_id, &msg.value);
+        }
+        if (ret == ESP_OK)
+        {
+            ret = espfsp_comm_proto_cam_set_params(&instance->comm_proto, &msg);
+        }
     }
 
     return ret;
