@@ -85,6 +85,7 @@ esp_err_t espfsp_data_proto_init(espfsp_data_proto_t *data_proto, espfsp_data_pr
         data_proto->frame_config.frame_max_len = config->frame_config->frame_max_len;
     }
 
+    data_proto->startStopQueue = NULL;
     data_proto->startStopQueue = xQueueCreate(QUEUE_MAX_SIZE, sizeof(uint8_t));
     if (data_proto->startStopQueue == NULL)
     {
@@ -92,6 +93,7 @@ esp_err_t espfsp_data_proto_init(espfsp_data_proto_t *data_proto, espfsp_data_pr
         return ESP_FAIL;
     }
 
+    data_proto->settingsQueue = NULL;
     data_proto->settingsQueue = xQueueCreate(QUEUE_MAX_SIZE, sizeof(espfsp_frame_config_t));
     if (data_proto->settingsQueue == NULL)
     {

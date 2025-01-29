@@ -158,6 +158,7 @@ esp_err_t espfsp_message_buffer_init(espfsp_receiver_buffer_t *receiver_buffer, 
         return ESP_FAIL;
     }
 
+    receiver_buffer->frameQueue = NULL;
     receiver_buffer->frameQueue = xQueueCreate(config->buffered_fbs, sizeof(espfsp_message_assembly_t*));
     if (receiver_buffer->frameQueue == NULL)
     {

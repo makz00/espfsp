@@ -34,6 +34,7 @@ esp_err_t espfsp_comm_proto_init(espfsp_comm_proto_t *comm_proto, espfsp_comm_pr
 
     memcpy(comm_proto->config, config, sizeof(espfsp_comm_proto_config_t));
 
+    comm_proto->reqActionQueue = NULL;
     comm_proto->reqActionQueue = xQueueCreate(comm_proto->config->buffered_actions, sizeof(espfsp_comm_proto_action_t));
     if (comm_proto->reqActionQueue == NULL)
     {

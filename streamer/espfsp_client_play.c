@@ -145,6 +145,7 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
 
     esp_err_t err = ESP_OK;
 
+    instance->get_sources_data_queue = NULL;
     instance->get_sources_data_queue = xQueueCreate(1, sizeof(espfsp_get_sources_data_t));
     if (instance->get_sources_data_queue == NULL)
     {
@@ -152,6 +153,7 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
         return NULL;
     }
 
+    instance->get_frame_config_data_queue = NULL;
     instance->get_frame_config_data_queue = xQueueCreate(frame_param_map_size, sizeof(espfsp_get_param_data_t));
     if (instance->get_frame_config_data_queue == NULL)
     {
@@ -159,6 +161,7 @@ static espfsp_client_play_instance_t *create_new_client_play(const espfsp_client
         return NULL;
     }
 
+    instance->get_cam_config_data_queue = NULL;
     instance->get_cam_config_data_queue = xQueueCreate(cam_param_map_size, sizeof(espfsp_get_param_data_t));
     if (instance->get_cam_config_data_queue == NULL)
     {
@@ -321,6 +324,29 @@ espfsp_fb_t *espfsp_client_play_get_fb(espfsp_client_play_handler_t handler, uin
 {
     espfsp_client_play_instance_t *instance = (espfsp_client_play_instance_t *) handler;
 
+    if (xSemaphoreTake(instance->session_data.mutex, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot take semaphore");
+        return NULL;
+    }
+
+    if (!instance->session_data.active || !instance->session_data.stream_started)
+    {
+        if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+        {
+            ESP_LOGE(TAG, "Cannot give semaphore");
+            return NULL;
+        }
+
+        return NULL;
+    }
+
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return NULL;
+    }
+
     return espfsp_message_buffer_get_fb(&instance->receiver_buffer, timeout_ms);
 }
 
@@ -366,11 +392,11 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
     instance->session_data.stream_started = true;
     msg.session_id = instance->session_data.session_id;
 
-    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
-    {
-        ESP_LOGE(TAG, "Cannot give semaphore");
-        return ESP_FAIL;
-    }
+    // if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    // {
+    //     ESP_LOGE(TAG, "Cannot give semaphore");
+    //     return ESP_FAIL;
+    // }
 
     if (instance->config->frame_config.buffered_fbs != instance->receiver_buffer.config->buffered_fbs ||
         instance->config->frame_config.fb_in_buffer_before_get != instance->receiver_buffer.config->fb_in_buffer_before_get ||
@@ -394,6 +420,12 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
             ESP_LOGE(TAG, "Receiver buffer reconfiguration failed");
             return ret;
         }
+    }
+
+    if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Cannot give semaphore");
+        return ESP_FAIL;
     }
 
     if (ret == ESP_OK)
@@ -568,8 +600,7 @@ esp_err_t espfsp_client_play_get_frame(
 
     if (params_to_receive > 0)
     {
-        ESP_LOGE(TAG, "Cannot receive all frame params. Try increase timeout");
-        ret = ESP_FAIL;
+        ESP_LOGI(TAG, "Cannot receive all frame params. Try increase timeout");
     }
 
     return ret;
@@ -689,8 +720,7 @@ esp_err_t espfsp_client_play_get_cam(
 
     if (params_to_receive > 0)
     {
-        ESP_LOGE(TAG, "Cannot receive all camera params. Try increase timeout");
-        ret = ESP_FAIL;
+        ESP_LOGI(TAG, "Cannot receive all camera params. Try increase timeout");
     }
 
     return ret;
@@ -749,8 +779,10 @@ esp_err_t espfsp_client_play_get_sources_timeout(
 
         if (xQueueReceive(instance->get_sources_data_queue, &sources_data, 0) != pdTRUE)
         {
-            ESP_LOGE(TAG, "Cannot receive producent value from queue");
-            ret = ESP_FAIL;
+            ESP_LOGI(TAG, "Cannot receive producent value from queue");
+            *sources_names_len = 0;
+
+            return ESP_OK;
         }
     }
     if (ret == ESP_OK)
