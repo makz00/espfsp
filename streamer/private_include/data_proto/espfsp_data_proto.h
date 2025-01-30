@@ -52,7 +52,7 @@ typedef enum {
     ESPFSP_DATA_PROTO_FRAME_NOT_OBTAINED,
 } espfsp_data_proto_send_frame_state_t;
 
-typedef esp_err_t (*__espfsp_data_proto_send_frame)(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_frame_state_t *state);
+typedef esp_err_t (*__espfsp_data_proto_send_frame)(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_frame_state_t *state, uint32_t max_allowed_size);
 
 typedef struct {
     espfsp_data_proto_type_t type;

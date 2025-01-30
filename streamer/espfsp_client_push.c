@@ -44,7 +44,7 @@ static esp_err_t start_session_and_control_task(espfsp_client_push_instance_t * 
 
     xStatus = xTaskCreate(
         espfsp_client_session_and_control_task,
-        "espfsp_client_push_session_and_control_task",
+        "session_and_control_task",
         instance->config->session_and_control_task_info.stack_size,
         (void *) data,
         instance->config->session_and_control_task_info.task_prio,
@@ -79,7 +79,7 @@ static esp_err_t start_data_task(espfsp_client_push_instance_t * instance)
 
     xStatus = xTaskCreate(
         espfsp_client_data_task,
-        "espfsp_client_push_data_task",
+        "data_task",
         instance->config->data_task_info.stack_size,
         (void *) data,
         instance->config->data_task_info.task_prio,

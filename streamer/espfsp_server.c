@@ -52,7 +52,7 @@ static esp_err_t start_client_push_session_and_control_task(espfsp_server_instan
 
     xStatus = xTaskCreate(
         espfsp_server_session_and_control_task,
-        "espfsp_server_client_push_session_and_control_task",
+        "push_session_and_control_task",
         instance->config->client_push_session_and_control_task_info.stack_size,
         (void *) data,
         instance->config->client_push_session_and_control_task_info.task_prio,
@@ -88,7 +88,7 @@ static esp_err_t start_client_play_session_and_control_task(espfsp_server_instan
 
     xStatus = xTaskCreate(
         espfsp_server_session_and_control_task,
-        "espfsp_server_client_play_session_and_control_task",
+        "play_session_and_control_task",
         instance->config->client_play_session_and_control_task_info.stack_size,
         (void *) data,
         instance->config->client_play_session_and_control_task_info.task_prio,
@@ -121,7 +121,7 @@ static esp_err_t start_client_push_data_task(espfsp_server_instance_t * instance
 
     xStatus = xTaskCreate(
         espfsp_server_data_task,
-        "espfsp_server_client_push_data_task",
+        "push_data_task",
         instance->config->client_push_data_task_info.stack_size,
         (void *) data,
         instance->config->client_push_data_task_info.task_prio,
@@ -154,7 +154,7 @@ static esp_err_t start_client_play_data_task(espfsp_server_instance_t * instance
 
     xStatus = xTaskCreate(
         espfsp_server_data_task,
-        "espfsp_server_client_play_data_task",
+        "play_data_task",
         instance->config->client_play_data_task_info.stack_size,
         (void *) data,
         instance->config->client_play_data_task_info.task_prio,

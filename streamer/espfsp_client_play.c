@@ -21,6 +21,8 @@
 #include "client_common/espfsp_session_and_control_task.h"
 #include "client_common/espfsp_data_task.h"
 
+#define GET_REQUESTS_WAIT_TICK_MS 10
+
 static const char *TAG = "ESPFSP_CLIENT_PLAY";
 
 static espfsp_client_play_state_t *state_ = NULL;
@@ -46,7 +48,7 @@ static esp_err_t start_session_and_control_task(espfsp_client_play_instance_t * 
 
     xStatus = xTaskCreate(
         espfsp_client_session_and_control_task,
-        "espfsp_client_play_session_and_control_task",
+        "session_and_control_task",
         instance->config->session_and_control_task_info.stack_size,
         (void *) data,
         instance->config->session_and_control_task_info.task_prio,
@@ -81,7 +83,7 @@ static esp_err_t start_data_task(espfsp_client_play_instance_t * instance)
 
     xStatus = xTaskCreate(
         espfsp_client_data_task,
-        "espfsp_server_client_push_data_task",
+        "data_task",
         instance->config->data_task_info.stack_size,
         (void *) data,
         instance->config->data_task_info.task_prio,
@@ -392,12 +394,6 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
     instance->session_data.stream_started = true;
     msg.session_id = instance->session_data.session_id;
 
-    // if (xSemaphoreGive(instance->session_data.mutex) != pdTRUE)
-    // {
-    //     ESP_LOGE(TAG, "Cannot give semaphore");
-    //     return ESP_FAIL;
-    // }
-
     if (instance->config->frame_config.buffered_fbs != instance->receiver_buffer.config->buffered_fbs ||
         instance->config->frame_config.fb_in_buffer_before_get != instance->receiver_buffer.config->fb_in_buffer_before_get ||
         instance->config->frame_config.frame_max_len != instance->receiver_buffer.config->frame_max_len ||
@@ -418,7 +414,6 @@ esp_err_t espfsp_client_play_start_stream(espfsp_client_play_handler_t handler)
         if (ret != ESP_OK)
         {
             ESP_LOGE(TAG, "Receiver buffer reconfiguration failed");
-            return ret;
         }
     }
 
@@ -592,8 +587,8 @@ esp_err_t espfsp_client_play_get_frame(
             }
             else
             {
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-                timeout_ms -= 10;
+                vTaskDelay(GET_REQUESTS_WAIT_TICK_MS / portTICK_PERIOD_MS);
+                timeout_ms -= GET_REQUESTS_WAIT_TICK_MS;
             }
         }
     }
@@ -712,8 +707,8 @@ esp_err_t espfsp_client_play_get_cam(
             }
             else
             {
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-                timeout_ms -= 10;
+                vTaskDelay(GET_REQUESTS_WAIT_TICK_MS / portTICK_PERIOD_MS);
+                timeout_ms -= GET_REQUESTS_WAIT_TICK_MS;
             }
         }
     }
@@ -772,8 +767,8 @@ esp_err_t espfsp_client_play_get_sources_timeout(
             }
             else
             {
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-                timeout_ms -= 10;
+                vTaskDelay(GET_REQUESTS_WAIT_TICK_MS / portTICK_PERIOD_MS);
+                timeout_ms -= GET_REQUESTS_WAIT_TICK_MS;
             }
         }
 

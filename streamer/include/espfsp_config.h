@@ -48,7 +48,7 @@ typedef enum
 
 typedef esp_err_t (*__espfsp_start_cam)(const espfsp_cam_config_t *cam_config, const espfsp_frame_config_t *frame_config);
 typedef esp_err_t (*__espfsp_stop_cam)();
-typedef esp_err_t (*__espfsp_send_frame)(espfsp_fb_t *fb, espfsp_send_frame_cb_state_t *state);
+typedef esp_err_t (*__espfsp_send_frame)(espfsp_fb_t *fb, espfsp_send_frame_cb_state_t *state, uint32_t max_allowed_size);
 typedef esp_err_t (*__espfsp_send_reconf_cam)(const espfsp_cam_config_t *cam_config);
 
 typedef struct

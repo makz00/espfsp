@@ -47,7 +47,6 @@ void espfsp_client_session_and_control_task(void *pvParameters)
         ret = espfsp_create_tcp_client(&sock, data->local_port, &dest_addr);
         if (ret != ESP_OK)
         {
-            // Wait for 5 sec
             ESP_LOGE(TAG, "Create TCP client failed. Waiting 5 sec before retrying...");
             vTaskDelay(5000 / portTICK_PERIOD_MS);
             continue;

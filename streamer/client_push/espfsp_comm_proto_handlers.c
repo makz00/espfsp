@@ -106,10 +106,10 @@ esp_err_t espfsp_client_push_req_stop_stream_handler(espfsp_comm_proto_t *comm_p
     }
     if (ret == ESP_OK && instance->session_data.camera_started)
     {
-        ret = espfsp_data_proto_start(&instance->data_proto);
+        ret = espfsp_data_proto_stop(&instance->data_proto);
         if (ret == ESP_OK)
         {
-            ret = instance->config->cb.start_cam(&instance->config->cam_config, &instance->config->frame_config);
+            ret = instance->config->cb.stop_cam();
         }
         if (ret != ESP_OK)
         {

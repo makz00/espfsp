@@ -13,13 +13,13 @@
 
 static const char *TAG = "ESPFSP_CLIENT_PUSH_DATA_PROTO_CONF";
 
-static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_frame_state_t *state)
+static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_frame_state_t *state, uint32_t max_allowed_size)
 {
     esp_err_t ret = ESP_OK;
     espfsp_client_push_instance_t *instance = (espfsp_client_push_instance_t *) ctx;
     espfsp_send_frame_cb_state_t send_frame_cb_state = ESPFSP_SEND_FRAME_CB_FRAME_NOT_OBTAINED;
 
-    ret = instance->config->cb.send_frame(fb, &send_frame_cb_state);
+    ret = instance->config->cb.send_frame(fb, &send_frame_cb_state, max_allowed_size);
     if (ret == ESP_OK)
     {
         switch (send_frame_cb_state)

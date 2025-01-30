@@ -17,9 +17,9 @@
 
 #include "server/espfsp_data_proto_conf.h"
 
-// static const char *TAG = "ESPFSP_SERVER_DATA_PROTO_CONF";
+static const char *TAG = "ESPFSP_SERVER_DATA_PROTO_CONF";
 
-static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_frame_state_t *state)
+static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_frame_state_t *state, uint32_t max_allowed_size)
 {
     esp_err_t ret = ESP_OK;
     espfsp_server_instance_t *instance = (espfsp_server_instance_t *) ctx;
@@ -30,6 +30,13 @@ static esp_err_t send_frame(espfsp_fb_t *fb, void *ctx, espfsp_data_proto_send_f
     {
         *state = ESPFSP_DATA_PROTO_FRAME_NOT_OBTAINED;
         return ESP_OK;
+    }
+
+    if (recv_buf_fb->len > max_allowed_size)
+    {
+        ESP_LOGW(TAG, "Allowed frame size exceeded");
+        *state = ESPFSP_DATA_PROTO_FRAME_NOT_OBTAINED;
+        return espfsp_message_buffer_return_fb(&instance->receiver_buffer);
     }
 
     fb->len = recv_buf_fb->len;

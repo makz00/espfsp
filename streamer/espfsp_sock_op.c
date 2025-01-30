@@ -181,12 +181,12 @@ esp_err_t espfsp_send_whole_fb_to(int sock, espfsp_fb_t *fb, struct sockaddr_in 
         }
 
         // Forced delay as receiver side cannot handle a lot of Frame Buffers in short time
-        const TickType_t xDelayMs = pdMS_TO_TICKS(10UL);
-        vTaskDelay(xDelayMs);
+        // const TickType_t xDelayMs = pdMS_TO_TICKS(10UL);
+        // vTaskDelay(xDelayMs);
     }
     // Forced delay as receiver side cannot handle a lot of Frame Buffers in short time
-    const TickType_t xDelayMs = pdMS_TO_TICKS(50UL);
-    vTaskDelay(xDelayMs);
+    // const TickType_t xDelayMs = pdMS_TO_TICKS(50UL);
+    // vTaskDelay(xDelayMs);
 
     return ESP_OK;
 }
@@ -418,6 +418,7 @@ static esp_err_t receive_block_state(
     FD_SET(sock, &readfds);
 
     int ret = select(sock + 1, &readfds, NULL, NULL, timeout);
+
     if (ret > 0 && FD_ISSET(sock, &readfds)) {
         // What if not whole message will be read?
         *received = recv(sock, rx_buffer, rx_buffer_len, 0);
