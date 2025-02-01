@@ -605,7 +605,7 @@ esp_err_t espfsp_server_req_source_set_handler(espfsp_comm_proto_t *comm_proto, 
                 &new_primary_push_comm_proto);
             if (ret == ESP_OK && new_primary_push_comm_proto == NULL)
             {
-                ESP_LOGI(TAG, "Canont set new push");
+                ESP_LOGI(TAG, "Cannot set new push");
                 espfsp_session_manager_release(session_manager);
                 return ESP_OK;
             }

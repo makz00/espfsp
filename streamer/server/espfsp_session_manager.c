@@ -294,6 +294,12 @@ esp_err_t espfsp_session_manager_activate_session(
             &data->cam_config,
             &session_manager->config->default_cam_config,
             sizeof(espfsp_cam_config_t));
+
+        // Works only with assumption of only one CLIENT_PLAY
+        if (data->type == ESPFSP_SESSION_MANAGER_SESSION_TYPE_CLIENT_PLAY)
+        {
+            session_manager->primary_client_play_session_data = data;
+        }
     }
     else
     {
